@@ -3,6 +3,8 @@ export interface EnvConfig {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
+  /** Comma-separated allowed CORS origin(s) for the deployed frontend. Unset in local dev — CORS stays permissive then. */
+  FRONTEND_URL: string | null;
 }
 
 const REQUIRED_KEYS: Array<keyof EnvConfig> = [
@@ -31,5 +33,9 @@ export function validateEnv(config: Record<string, unknown>): EnvConfig {
     SUPABASE_URL: String(config.SUPABASE_URL),
     SUPABASE_ANON_KEY: String(config.SUPABASE_ANON_KEY),
     SUPABASE_SERVICE_ROLE_KEY: String(config.SUPABASE_SERVICE_ROLE_KEY),
+    FRONTEND_URL:
+      typeof config.FRONTEND_URL === 'string' && config.FRONTEND_URL.length > 0
+        ? config.FRONTEND_URL
+        : null,
   };
 }

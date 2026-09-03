@@ -8,10 +8,16 @@ import { AppModule } from './app.module';
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
-  // Permissive for now so local dev tools (e.g. dev-test-ui.html opened via
-  // file://) and the eventual Lovable frontend can both call the API during
-  // development. Scope this down to the real frontend origin before prod.
-  app.enableCors();
+  // Locked to FRONTEND_URL (comma-separated for multiple deploy URLs — e.g. the
+  // Vercel production domain plus its preview-deployment domain) once set. Left
+  // permissive when unset so local dev tools (e.g. dev-test-ui.html opened via
+  // file://) can still call the API without extra setup.
+  const allowedOrigins = process.env.FRONTEND_URL?.split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  app.enableCors({
+    origin: allowedOrigins && allowedOrigins.length > 0 ? allowedOrigins : true,
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
