@@ -1,0 +1,11 @@
+services:
+  pulse-api:
+    build: .
+    container_name: pulse-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    # Loopback-only — this box has other tenants, so the API is reachable
+    # exclusively through the host's Nginx reverse proxy, never directly.
+    ports:
+      - "127.0.0.1:4310:3000"
