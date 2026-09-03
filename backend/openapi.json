@@ -1,0 +1,1679 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "HealthController_check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Liveness check — confirms the API process is up and responding.",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Email or password is incorrect."
+          }
+        },
+        "summary": "Sign in with email and password, returning a bearer token for use everywhere else.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Signed out."
+          },
+          "401": {
+            "description": "Missing or invalid bearer token."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Invalidate the caller's current session.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "operationId": "AuthController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthUserDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid bearer token."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Return the caller's own profile — id, role, and workstream scope.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/workstreams": {
+      "get": {
+        "operationId": "WorkstreamsController_findAll",
+        "parameters": [
+          {
+            "name": "include_archived",
+            "required": false,
+            "in": "query",
+            "description": "Include archived (soft-deleted) workstreams in the results.",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkstreamDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List all workstreams, in TWG display order. Archived workstreams are excluded unless include_archived=true.",
+        "tags": [
+          "workstreams"
+        ]
+      },
+      "post": {
+        "operationId": "WorkstreamsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkstreamDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkstreamDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not admin or smo."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Admin/SMO-only: create a new workstream.",
+        "tags": [
+          "workstreams"
+        ]
+      }
+    },
+    "/workstreams/summary": {
+      "get": {
+        "operationId": "WorkstreamsController_summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkstreamSummaryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Per-workstream initiative counts by RAG status — replaces the old Excel Summary sheet.",
+        "tags": [
+          "workstreams"
+        ]
+      }
+    },
+    "/workstreams/{id}": {
+      "get": {
+        "operationId": "WorkstreamsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Workstream id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkstreamDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No workstream with that id."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a single workstream by id.",
+        "tags": [
+          "workstreams"
+        ]
+      },
+      "patch": {
+        "operationId": "WorkstreamsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Workstream id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWorkstreamDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkstreamDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not admin or smo."
+          },
+          "404": {
+            "description": "No workstream with that id."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Admin/SMO-only: rename a workstream or change its display order.",
+        "tags": [
+          "workstreams"
+        ]
+      },
+      "delete": {
+        "operationId": "WorkstreamsController_archive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Workstream id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkstreamDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not admin or smo."
+          },
+          "404": {
+            "description": "No workstream with that id."
+          },
+          "409": {
+            "description": "Workstream still has active initiatives."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Admin/SMO-only: archive (soft-delete) a workstream. Refuses if it still has active initiatives. The row is never hard-deleted — see POST /workstreams/:id/restore.",
+        "tags": [
+          "workstreams"
+        ]
+      }
+    },
+    "/workstreams/{id}/restore": {
+      "post": {
+        "operationId": "WorkstreamsController_restore",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Workstream id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkstreamDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not admin or smo."
+          },
+          "404": {
+            "description": "No workstream with that id."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Admin/SMO-only: restore a previously archived workstream.",
+        "tags": [
+          "workstreams"
+        ]
+      }
+    },
+    "/initiatives": {
+      "get": {
+        "operationId": "InitiativesController_findAll",
+        "parameters": [
+          {
+            "name": "workstream_id",
+            "required": false,
+            "in": "query",
+            "description": "Filter to initiatives in a single workstream.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by current RAG status.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Not started",
+                "In progress",
+                "Completed",
+                "Delayed/at risk"
+              ]
+            }
+          },
+          {
+            "name": "include_archived",
+            "required": false,
+            "in": "query",
+            "description": "Include archived (soft-deleted) initiatives in the results.",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InitiativeDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List initiatives (current-state snapshot), optionally filtered by workstream and/or status. Archived initiatives are excluded unless include_archived=true.",
+        "tags": [
+          "initiatives"
+        ]
+      },
+      "post": {
+        "operationId": "InitiativesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInitiativeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InitiativeDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not admin or smo."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Admin/SMO-only: register a new initiative against a workstream. Status defaults to \"Not started\" if omitted.",
+        "tags": [
+          "initiatives"
+        ]
+      }
+    },
+    "/initiatives/{id}": {
+      "get": {
+        "operationId": "InitiativesController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Initiative id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InitiativeDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No initiative with that id."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a single initiative by id.",
+        "tags": [
+          "initiatives"
+        ]
+      },
+      "patch": {
+        "operationId": "InitiativesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Initiative id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInitiativeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InitiativeDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not admin or smo."
+          },
+          "404": {
+            "description": "No initiative with that id."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Admin/SMO-only direct correction to an initiative snapshot. Bypasses the normal fortnightly initiative_updates flow — use to fix mistakes, not for routine reporting.",
+        "tags": [
+          "initiatives"
+        ]
+      },
+      "delete": {
+        "operationId": "InitiativesController_archive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Initiative id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InitiativeDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not admin or smo."
+          },
+          "404": {
+            "description": "No initiative with that id."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Admin/SMO-only: archive (soft-delete) an initiative. Its milestones and update history are kept intact — see POST /initiatives/:id/restore.",
+        "tags": [
+          "initiatives"
+        ]
+      }
+    },
+    "/initiatives/{id}/restore": {
+      "post": {
+        "operationId": "InitiativesController_restore",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Initiative id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InitiativeDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not admin or smo."
+          },
+          "404": {
+            "description": "No initiative with that id."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Admin/SMO-only: restore a previously archived initiative.",
+        "tags": [
+          "initiatives"
+        ]
+      }
+    },
+    "/initiatives/{initiativeId}/milestones": {
+      "get": {
+        "operationId": "MilestonesController_findAllForInitiative",
+        "parameters": [
+          {
+            "name": "initiativeId",
+            "required": true,
+            "in": "path",
+            "description": "Parent initiative id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MilestoneDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No initiative with that id."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List milestones for one initiative, in display order.",
+        "tags": [
+          "milestones"
+        ]
+      },
+      "post": {
+        "operationId": "MilestonesController_create",
+        "parameters": [
+          {
+            "name": "initiativeId",
+            "required": true,
+            "in": "path",
+            "description": "Parent initiative id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMilestoneDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MilestoneDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not admin or smo."
+          },
+          "404": {
+            "description": "No initiative with that id."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Admin/SMO-only: add a new milestone under an initiative. Appends to the end unless a sequence is given.",
+        "tags": [
+          "milestones"
+        ]
+      }
+    },
+    "/initiatives/{initiativeId}/milestones/{id}": {
+      "patch": {
+        "operationId": "MilestonesController_update",
+        "parameters": [
+          {
+            "name": "initiativeId",
+            "required": true,
+            "in": "path",
+            "description": "Parent initiative id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Milestone id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMilestoneDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MilestoneDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not admin or smo."
+          },
+          "404": {
+            "description": "No milestone with that id under this initiative."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Admin/SMO-only: edit an existing milestone.",
+        "tags": [
+          "milestones"
+        ]
+      },
+      "delete": {
+        "operationId": "MilestonesController_remove",
+        "parameters": [
+          {
+            "name": "initiativeId",
+            "required": true,
+            "in": "path",
+            "description": "Parent initiative id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Milestone id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "403": {
+            "description": "Caller is not admin or smo."
+          },
+          "404": {
+            "description": "No milestone with that id under this initiative."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Admin/SMO-only: permanently delete a milestone. Unlike initiatives/workstreams this is a hard delete — a milestone carries no history of its own.",
+        "tags": [
+          "milestones"
+        ]
+      }
+    },
+    "/initiatives/{id}/updates": {
+      "get": {
+        "operationId": "UpdatesController_findAll",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Initiative id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InitiativeUpdateDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No initiative with that id."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the fortnightly update history for an initiative, newest first. The full audit trail is readable by everyone authenticated.",
+        "tags": [
+          "updates"
+        ]
+      },
+      "post": {
+        "operationId": "UpdatesController_submit",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Initiative id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitUpdateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InitiativeUpdateDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is a workstream_lead submitting for an initiative outside their workstream."
+          },
+          "404": {
+            "description": "No initiative with that id."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Submit a fortnightly update for an initiative. This is the append-only path leads use instead of editing the initiative directly — a trigger promotes the newest submission onto the initiative snapshot.",
+        "tags": [
+          "updates"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Pulse API",
+    "description": "NRS TWG Initiative Tracker",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "lead@nrs.gov.ng",
+            "description": "The user's Pulse account email."
+          },
+          "password": {
+            "type": "string",
+            "description": "The user's Pulse account password."
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "AuthUserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Profile id — matches the Supabase auth user id."
+          },
+          "email": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "smo",
+              "workstream_lead"
+            ],
+            "description": "admin/smo can read and write everything. workstream_lead is scoped to workstreamId."
+          },
+          "workstreamId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The workstream this user is scoped to. Always null for admin/smo."
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "fullName",
+          "role",
+          "workstreamId"
+        ]
+      },
+      "LoginResponseDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "Bearer token — pass as `Authorization: Bearer <accessToken>`."
+          },
+          "refreshToken": {
+            "type": "string",
+            "description": "Supabase refresh token, for obtaining a new access token."
+          },
+          "expiresAt": {
+            "type": "number",
+            "description": "Unix epoch seconds at which accessToken expires."
+          },
+          "user": {
+            "$ref": "#/components/schemas/AuthUserDto"
+          }
+        },
+        "required": [
+          "accessToken",
+          "refreshToken",
+          "expiresAt",
+          "user"
+        ]
+      },
+      "WorkstreamDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Workstream id (uuid)."
+          },
+          "name": {
+            "type": "string",
+            "description": "The TWG's name for this organizational grouping."
+          },
+          "sort_order": {
+            "type": "number",
+            "description": "Display order in TWG materials — ascending."
+          },
+          "created_at": {
+            "type": "string",
+            "description": "ISO timestamp the workstream row was created."
+          },
+          "archived_at": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO timestamp this workstream was archived (soft-deleted). Null = active."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "sort_order",
+          "created_at"
+        ]
+      },
+      "WorkstreamSummaryDto": {
+        "type": "object",
+        "properties": {
+          "workstream": {
+            "type": "string",
+            "description": "Workstream name."
+          },
+          "initiatives": {
+            "type": "number",
+            "description": "Total initiatives in this workstream."
+          },
+          "not_started": {
+            "type": "number",
+            "description": "Count with status \"Not started\"."
+          },
+          "in_progress": {
+            "type": "number",
+            "description": "Count with status \"In progress\"."
+          },
+          "completed": {
+            "type": "number",
+            "description": "Count with status \"Completed\"."
+          },
+          "delayed_at_risk": {
+            "type": "number",
+            "description": "Count with status \"Delayed/at risk\"."
+          }
+        },
+        "required": [
+          "workstream",
+          "initiatives",
+          "not_started",
+          "in_progress",
+          "completed",
+          "delayed_at_risk"
+        ]
+      },
+      "CreateWorkstreamDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The TWG's name for this organizational grouping."
+          },
+          "sort_order": {
+            "type": "number",
+            "description": "Display order in TWG materials — ascending. Defaults to last if omitted."
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateWorkstreamDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Renamed workstream label."
+          },
+          "sort_order": {
+            "type": "number",
+            "description": "Display order in TWG materials — ascending."
+          }
+        }
+      },
+      "InitiativeDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Initiative id (uuid)."
+          },
+          "workstream_id": {
+            "type": "string",
+            "description": "Id of the workstream this initiative belongs to."
+          },
+          "title": {
+            "type": "string",
+            "description": "Initiative title as shown in TWG materials."
+          },
+          "directorate_owner": {
+            "type": "string",
+            "nullable": true,
+            "description": "Directorate that owns this initiative. Empty on every row currently — a known data gap inherited from the prior SharePoint register, not a Pulse defect. Do not backfill with guesses."
+          },
+          "l_gate_stage": {
+            "type": "string",
+            "enum": [
+              "L0",
+              "L1",
+              "L2",
+              "L3",
+              "L4",
+              "L5"
+            ],
+            "nullable": true,
+            "description": "L-Gate stage."
+          },
+          "kpi_expected_impact": {
+            "type": "string",
+            "nullable": true,
+            "description": "KPI / expected impact narrative."
+          },
+          "target": {
+            "type": "string",
+            "nullable": true,
+            "description": "Target narrative for this initiative."
+          },
+          "actual": {
+            "type": "string",
+            "nullable": true,
+            "description": "Actual progress narrative."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Not started",
+              "In progress",
+              "Completed",
+              "Delayed/at risk"
+            ],
+            "description": "Current RAG status."
+          },
+          "latest_update": {
+            "type": "string",
+            "nullable": true,
+            "description": "Latest fortnightly update narrative."
+          },
+          "decisions_needed": {
+            "type": "string",
+            "nullable": true,
+            "description": "Decisions needed from the TWG, if any."
+          },
+          "update_as_at": {
+            "type": "string",
+            "nullable": true,
+            "description": "Date (YYYY-MM-DD) this snapshot reflects — set by the latest applied update."
+          },
+          "created_at": {
+            "type": "string",
+            "description": "ISO timestamp the initiative row was created."
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "ISO timestamp of the last change to this row."
+          },
+          "archived_at": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO timestamp this initiative was archived (soft-deleted). Null = active."
+          }
+        },
+        "required": [
+          "id",
+          "workstream_id",
+          "title",
+          "status",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "CreateInitiativeDto": {
+        "type": "object",
+        "properties": {
+          "workstream_id": {
+            "type": "string",
+            "description": "Id of the workstream this initiative belongs to."
+          },
+          "title": {
+            "type": "string",
+            "description": "Initiative title as shown in TWG materials."
+          },
+          "directorate_owner": {
+            "type": "string",
+            "nullable": true,
+            "description": "Directorate owner."
+          },
+          "l_gate_stage": {
+            "type": "string",
+            "enum": [
+              "L0",
+              "L1",
+              "L2",
+              "L3",
+              "L4",
+              "L5"
+            ],
+            "nullable": true
+          },
+          "kpi_expected_impact": {
+            "type": "string",
+            "nullable": true,
+            "description": "KPI / expected impact narrative."
+          },
+          "target": {
+            "type": "string",
+            "nullable": true
+          },
+          "actual": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Not started",
+              "In progress",
+              "Completed",
+              "Delayed/at risk"
+            ],
+            "default": "Not started",
+            "description": "Defaults to \"Not started\" if omitted."
+          },
+          "latest_update": {
+            "type": "string",
+            "nullable": true
+          },
+          "decisions_needed": {
+            "type": "string",
+            "nullable": true
+          },
+          "update_as_at": {
+            "type": "string",
+            "nullable": true,
+            "description": "Date (YYYY-MM-DD) this snapshot reflects."
+          }
+        },
+        "required": [
+          "workstream_id",
+          "title"
+        ]
+      },
+      "UpdateInitiativeDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Corrected title."
+          },
+          "directorate_owner": {
+            "type": "string",
+            "nullable": true,
+            "description": "Corrected directorate owner."
+          },
+          "l_gate_stage": {
+            "type": "string",
+            "enum": [
+              "L0",
+              "L1",
+              "L2",
+              "L3",
+              "L4",
+              "L5"
+            ],
+            "nullable": true
+          },
+          "kpi_expected_impact": {
+            "type": "string",
+            "nullable": true
+          },
+          "target": {
+            "type": "string",
+            "nullable": true
+          },
+          "actual": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Not started",
+              "In progress",
+              "Completed",
+              "Delayed/at risk"
+            ]
+          },
+          "latest_update": {
+            "type": "string",
+            "nullable": true
+          },
+          "decisions_needed": {
+            "type": "string",
+            "nullable": true
+          },
+          "update_as_at": {
+            "type": "string",
+            "nullable": true,
+            "description": "Date (YYYY-MM-DD) this corrected snapshot reflects."
+          }
+        }
+      },
+      "MilestoneDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Milestone id (uuid)."
+          },
+          "initiative_id": {
+            "type": "string",
+            "description": "Id of the parent initiative."
+          },
+          "title": {
+            "type": "string",
+            "description": "Milestone title."
+          },
+          "l_gate_stage": {
+            "type": "string",
+            "enum": [
+              "L0",
+              "L1",
+              "L2",
+              "L3",
+              "L4",
+              "L5"
+            ],
+            "nullable": true,
+            "description": "L-Gate stage."
+          },
+          "directorate_owner": {
+            "type": "string",
+            "nullable": true,
+            "description": "Directorate that owns this milestone. Empty on every row currently — same known data gap as initiatives.directorate_owner. Do not backfill with guesses."
+          },
+          "target_date": {
+            "type": "string",
+            "nullable": true,
+            "description": "Approximate target date (YYYY-MM-DD) — parsed from month-level TWG deck labels (e.g. \"Aug-26\" → first of month) except where the deck gave an exact day. Do not present as a precise due date without this caveat."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Not started",
+              "In progress",
+              "Completed",
+              "Delayed/at risk"
+            ],
+            "description": "Current RAG status."
+          },
+          "challenges": {
+            "type": "string",
+            "nullable": true,
+            "description": "Challenges narrative."
+          },
+          "upcoming_milestone": {
+            "type": "string",
+            "nullable": true,
+            "description": "Upcoming milestone narrative."
+          },
+          "sequence": {
+            "type": "number",
+            "description": "Display order within the parent initiative."
+          },
+          "created_at": {
+            "type": "string",
+            "description": "ISO timestamp the milestone row was created."
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "ISO timestamp of the last change to this row."
+          }
+        },
+        "required": [
+          "id",
+          "initiative_id",
+          "title",
+          "status",
+          "sequence",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "CreateMilestoneDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Milestone title."
+          },
+          "l_gate_stage": {
+            "type": "string",
+            "enum": [
+              "L0",
+              "L1",
+              "L2",
+              "L3",
+              "L4",
+              "L5"
+            ],
+            "nullable": true
+          },
+          "directorate_owner": {
+            "type": "string",
+            "nullable": true,
+            "description": "Directorate owner."
+          },
+          "target_date": {
+            "type": "string",
+            "nullable": true,
+            "description": "Target date (YYYY-MM-DD). Treat as approximate — see MilestoneDto."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Not started",
+              "In progress",
+              "Completed",
+              "Delayed/at risk"
+            ],
+            "default": "Not started",
+            "description": "Defaults to \"Not started\" if omitted."
+          },
+          "challenges": {
+            "type": "string",
+            "nullable": true
+          },
+          "upcoming_milestone": {
+            "type": "string",
+            "nullable": true
+          },
+          "sequence": {
+            "type": "number",
+            "description": "Display order within the parent initiative. Defaults to last if omitted."
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "UpdateMilestoneDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Milestone title."
+          },
+          "l_gate_stage": {
+            "type": "string",
+            "enum": [
+              "L0",
+              "L1",
+              "L2",
+              "L3",
+              "L4",
+              "L5"
+            ],
+            "nullable": true
+          },
+          "directorate_owner": {
+            "type": "string",
+            "nullable": true,
+            "description": "Directorate owner."
+          },
+          "target_date": {
+            "type": "string",
+            "nullable": true,
+            "description": "Target date (YYYY-MM-DD). Treat as approximate — see MilestoneDto."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Not started",
+              "In progress",
+              "Completed",
+              "Delayed/at risk"
+            ]
+          },
+          "challenges": {
+            "type": "string",
+            "nullable": true
+          },
+          "upcoming_milestone": {
+            "type": "string",
+            "nullable": true
+          },
+          "sequence": {
+            "type": "number",
+            "description": "Display order within the parent initiative."
+          }
+        }
+      },
+      "InitiativeUpdateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Update id (uuid)."
+          },
+          "initiative_id": {
+            "type": "string",
+            "description": "Initiative this update was submitted for."
+          },
+          "submitted_by": {
+            "type": "string",
+            "nullable": true,
+            "description": "Profile id of whoever submitted this."
+          },
+          "meeting_date": {
+            "type": "string",
+            "description": "The TWG meeting date (YYYY-MM-DD) this update is for."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Not started",
+              "In progress",
+              "Completed",
+              "Delayed/at risk"
+            ]
+          },
+          "target": {
+            "type": "string",
+            "nullable": true
+          },
+          "actual": {
+            "type": "string",
+            "nullable": true
+          },
+          "latest_update": {
+            "type": "string",
+            "description": "The fortnightly progress narrative."
+          },
+          "decisions_needed": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "description": "ISO timestamp this update was submitted."
+          }
+        },
+        "required": [
+          "id",
+          "initiative_id",
+          "meeting_date",
+          "status",
+          "latest_update",
+          "created_at"
+        ]
+      },
+      "SubmitUpdateDto": {
+        "type": "object",
+        "properties": {
+          "meeting_date": {
+            "type": "string",
+            "description": "The TWG meeting date (YYYY-MM-DD) this update is for."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Not started",
+              "In progress",
+              "Completed",
+              "Delayed/at risk"
+            ],
+            "description": "Current RAG status as of this update."
+          },
+          "target": {
+            "type": "string",
+            "description": "Updated target narrative, if it has changed."
+          },
+          "actual": {
+            "type": "string",
+            "description": "Updated actual-progress narrative, if it has changed."
+          },
+          "latest_update": {
+            "type": "string",
+            "description": "The fortnightly progress narrative for this initiative."
+          },
+          "decisions_needed": {
+            "type": "string",
+            "description": "Any decision the TWG needs to make on this initiative."
+          }
+        },
+        "required": [
+          "meeting_date",
+          "status",
+          "latest_update"
+        ]
+      }
+    }
+  }
+}

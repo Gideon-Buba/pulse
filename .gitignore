@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+*.log
+
+# Environment files — never commit real secrets. .env.example files are intentionally NOT ignored.
+.env
+.env.local
+.env.*.local
+
+# Local-only Claude Code config (not shared team config)
+.claude/settings.local.json
+
+.DS_Store

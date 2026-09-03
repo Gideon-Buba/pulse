@@ -1,0 +1,795 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pulse API Tester</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1d212a;
+    --border: #2a2f3a;
+    --text: #e6e8eb;
+    --text-dim: #9aa4b2;
+    --text-faint: #5c6472;
+    --accent: #3b82f6;
+    --accent-hover: #2f6fd6;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --gray: #6b7280;
+    --blue: #3b82f6;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+  }
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--panel); border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 16px; margin: 0; white-space: nowrap; }
+  header .subtitle { color: var(--text-faint); font-size: 12px; white-space: nowrap; }
+  header .spacer { flex: 1; }
+  .health-dot {
+    width: 9px; height: 9px; border-radius: 50%; background: var(--gray);
+    display: inline-block; margin-right: 6px; flex-shrink: 0;
+    box-shadow: 0 0 0 3px transparent;
+    transition: background .2s;
+  }
+  .health-dot.online { background: var(--green); box-shadow: 0 0 0 3px rgba(34,197,94,.15); }
+  .health-dot.offline { background: var(--red); box-shadow: 0 0 0 3px rgba(239,68,68,.15); }
+  .health-wrap { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+  #baseUrl {
+    width: 240px;
+  }
+  main {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 16px;
+    padding: 16px 20px 60px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+    .right-col { position: static !important; }
+  }
+  .right-col {
+    position: sticky; top: 66px;
+    display: flex; flex-direction: column; gap: 16px;
+    max-height: calc(100vh - 82px);
+  }
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px;
+  }
+  .card h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--text-dim); margin: 0 0 4px;
+  }
+  .card .desc { color: var(--text-faint); font-size: 12px; margin: 0 0 12px; line-height: 1.5; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 10px; }
+  .field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
+  .field label { font-size: 11px; color: var(--text-dim); }
+  input, select, textarea {
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 7px 9px; font-size: 13px; font-family: var(--sans);
+    width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 54px; font-family: var(--sans); }
+  input[type=checkbox] { width: auto; }
+  button {
+    background: var(--accent); color: white; border: none; border-radius: 6px;
+    padding: 8px 14px; font-size: 13px; cursor: pointer; white-space: nowrap;
+    font-weight: 500;
+  }
+  button:hover { background: var(--accent-hover); }
+  button.secondary {
+    background: transparent; border: 1px solid var(--border); color: var(--text-dim);
+  }
+  button.secondary:hover { color: var(--text); border-color: var(--text-dim); }
+  button.danger { background: var(--red); }
+  button.danger:hover { background: #d63d3d; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  hr.sep { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td {
+    text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th { color: var(--text-dim); font-weight: 500; font-size: 11px; text-transform: uppercase; }
+  td.mono, th.mono { font-family: var(--mono); }
+  .table-wrap { overflow-x: auto; max-height: 320px; overflow-y: auto; border-radius: 6px; }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px;
+    font-weight: 600; white-space: nowrap;
+  }
+  .badge.status-2 { background: rgba(34,197,94,.15); color: var(--green); }
+  .badge.status-3 { background: rgba(59,130,246,.15); color: var(--blue); }
+  .badge.status-4 { background: rgba(245,158,11,.15); color: var(--amber); }
+  .badge.status-5, .badge.status-0 { background: rgba(239,68,68,.15); color: var(--red); }
+  .rag-not-started { background: rgba(107,114,128,.18); color: #b7bdc7; }
+  .rag-in-progress { background: rgba(59,130,246,.18); color: #7fb0ff; }
+  .rag-completed { background: rgba(34,197,94,.18); color: #6ee79a; }
+  .rag-delayed-at-risk { background: rgba(239,68,68,.18); color: #ff8b8b; }
+  .method-badge {
+    font-family: var(--mono); font-size: 11px; font-weight: 700; padding: 2px 6px;
+    border-radius: 4px; margin-right: 6px;
+  }
+  .method-GET { background: rgba(59,130,246,.18); color: #7fb0ff; }
+  .method-POST { background: rgba(34,197,94,.18); color: #6ee79a; }
+  .method-PATCH { background: rgba(245,158,11,.18); color: #ffce6b; }
+  .method-DELETE { background: rgba(239,68,68,.18); color: #ff8b8b; }
+  #responseBody {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px; font-family: var(--mono); font-size: 12px; line-height: 1.5;
+    max-height: 340px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+    margin: 0;
+  }
+  .resp-meta { font-family: var(--mono); font-size: 12px; color: var(--text-dim); margin-bottom: 8px;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .resp-meta .url { color: var(--text); word-break: break-all; }
+  .json-key { color: #7fb0ff; }
+  .json-string { color: #6ee79a; }
+  .json-number { color: #ffce6b; }
+  .json-boolean { color: #d6a4ff; }
+  .json-null { color: var(--text-faint); }
+  .empty-hint { color: var(--text-faint); font-size: 12px; font-style: italic; padding: 8px 0; }
+  #historyList { display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow-y: auto; }
+  .history-item {
+    display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 6px;
+    cursor: pointer; font-size: 12px; font-family: var(--mono);
+  }
+  .history-item:hover { background: var(--panel-2); }
+  .history-item .path { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-dim); }
+  .session-line { display: flex; justify-content: space-between; font-size: 12.5px; padding: 3px 0; }
+  .session-line .k { color: var(--text-faint); }
+  .session-line .v { font-family: var(--mono); }
+  .token-box { display: flex; gap: 6px; align-items: center; }
+  .token-box input { font-family: var(--mono); font-size: 11px; }
+  details summary { cursor: pointer; color: var(--text-dim); font-size: 12px; margin-bottom: 8px; user-select: none; }
+  details summary:hover { color: var(--text); }
+  .form-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .warning-banner {
+    background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3); color: #ffce6b;
+    padding: 10px 14px; border-radius: 8px; font-size: 12.5px; margin: 0 20px 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="warning-banner">
+  This is a throwaway internal test harness for the Pulse API — <strong>not</strong> the real frontend
+  (that's Lovable's job, built against <code>openapi.json</code>). No design system, no polish, just buttons that hit endpoints.
+</div>
+
+<header>
+  <h1>Pulse API Tester</h1>
+  <span class="subtitle">NRS TWG Initiative Tracker</span>
+  <div class="spacer"></div>
+  <div class="field" style="max-width:260px; min-width:200px;">
+    <label for="baseUrl">API Base URL</label>
+    <input id="baseUrl" type="text" />
+  </div>
+  <div class="health-wrap">
+    <span id="healthDot" class="health-dot"></span>
+    <span id="healthLabel">checking…</span>
+  </div>
+  <button class="secondary" id="pingBtn">Ping</button>
+</header>
+
+<main>
+  <!-- LEFT COLUMN: request panels -->
+  <div class="left-col">
+
+    <!-- AUTH -->
+    <div class="card">
+      <h2>Auth</h2>
+      <p class="desc">POST /auth/login · POST /auth/logout · GET /auth/me</p>
+      <div class="row">
+        <div class="field">
+          <label>Email</label>
+          <input id="loginEmail" type="text" value="gideon.buba@nrs.gov.ng" />
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input id="loginPassword" type="password" placeholder="password" />
+        </div>
+        <button id="loginBtn">Login</button>
+      </div>
+      <div class="row">
+        <button class="secondary" id="meBtn">GET /auth/me</button>
+        <button class="danger" id="logoutBtn">Logout</button>
+      </div>
+    </div>
+
+    <!-- WORKSTREAMS -->
+    <div class="card">
+      <h2>Workstreams</h2>
+      <p class="desc">GET /workstreams · GET /workstreams/summary · GET /workstreams/:id</p>
+      <div class="row">
+        <button id="listWorkstreamsBtn">List Workstreams</button>
+        <button id="summaryBtn">Get Summary</button>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Workstream id (or pick from list above)</label>
+          <input id="workstreamIdInput" list="workstreamDatalist" placeholder="uuid" />
+          <datalist id="workstreamDatalist"></datalist>
+        </div>
+        <button class="secondary" id="getWorkstreamBtn">Get by id</button>
+      </div>
+      <div id="workstreamsTableWrap" class="table-wrap"></div>
+    </div>
+
+    <!-- INITIATIVES -->
+    <div class="card">
+      <h2>Initiatives</h2>
+      <p class="desc">GET /initiatives · GET /initiatives/:id · PATCH /initiatives/:id (admin/smo)</p>
+      <div class="row">
+        <div class="field">
+          <label>Filter: workstream</label>
+          <input id="filterWorkstream" list="workstreamDatalist" placeholder="uuid (optional)" />
+        </div>
+        <div class="field">
+          <label>Filter: status</label>
+          <select id="filterStatus">
+            <option value="">Any</option>
+            <option>Not started</option>
+            <option>In progress</option>
+            <option>Completed</option>
+            <option>Delayed/at risk</option>
+          </select>
+        </div>
+        <button id="listInitiativesBtn">List Initiatives</button>
+      </div>
+      <div id="initiativesTableWrap" class="table-wrap"></div>
+
+      <hr class="sep" />
+
+      <div class="row">
+        <div class="field">
+          <label>Initiative id (or pick from list above)</label>
+          <input id="initiativeIdInput" list="initiativeDatalist" placeholder="uuid" />
+          <datalist id="initiativeDatalist"></datalist>
+        </div>
+        <button class="secondary" id="getInitiativeBtn">Get by id</button>
+      </div>
+
+      <details>
+        <summary>Admin correction (PATCH) — leave fields blank to skip them</summary>
+        <div class="row">
+          <div class="field"><label>Title</label><input id="corTitle" /></div>
+          <div class="field"><label>Directorate owner</label><input id="corDirectorate" /></div>
+          <div class="field">
+            <label>L-Gate stage</label>
+            <select id="corLGate">
+              <option value="">—</option>
+              <option>L0</option><option>L1</option><option>L2</option><option>L3</option><option>L4</option><option>L5</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Target</label><input id="corTarget" /></div>
+          <div class="field"><label>Actual</label><input id="corActual" /></div>
+          <div class="field">
+            <label>Status</label>
+            <select id="corStatus">
+              <option value="">—</option>
+              <option>Not started</option>
+              <option>In progress</option>
+              <option>Completed</option>
+              <option>Delayed/at risk</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Latest update</label><textarea id="corLatestUpdate"></textarea></div>
+          <div class="field"><label>Decisions needed</label><textarea id="corDecisions"></textarea></div>
+        </div>
+        <div class="row">
+          <div class="field" style="max-width:200px;"><label>Update as-at (YYYY-MM-DD)</label><input id="corUpdateAsAt" type="date" /></div>
+          <div class="field"><label>KPI / expected impact</label><input id="corKpi" /></div>
+        </div>
+        <div class="form-actions">
+          <button id="patchInitiativeBtn">PATCH /initiatives/:id</button>
+        </div>
+      </details>
+    </div>
+
+    <!-- MILESTONES -->
+    <div class="card">
+      <h2>Milestones</h2>
+      <p class="desc">GET /initiatives/:id/milestones</p>
+      <div class="row">
+        <div class="field">
+          <label>Initiative id</label>
+          <input id="milestoneInitiativeId" list="initiativeDatalist" placeholder="uuid" />
+        </div>
+        <button id="listMilestonesBtn">List Milestones</button>
+      </div>
+      <div id="milestonesTableWrap" class="table-wrap"></div>
+    </div>
+
+    <!-- UPDATES -->
+    <div class="card">
+      <h2>Updates</h2>
+      <p class="desc">GET /initiatives/:id/updates · POST /initiatives/:id/updates</p>
+      <div class="row">
+        <div class="field">
+          <label>Initiative id</label>
+          <input id="updatesInitiativeId" list="initiativeDatalist" placeholder="uuid" />
+        </div>
+        <button id="listUpdatesBtn">List Update History</button>
+      </div>
+      <div id="updatesTableWrap" class="table-wrap"></div>
+
+      <hr class="sep" />
+      <p class="desc" style="margin-bottom:8px;">Submit a fortnightly update (uses the same initiative id above)</p>
+      <div class="row">
+        <div class="field" style="max-width:180px;">
+          <label>Meeting date</label>
+          <input id="subMeetingDate" type="date" />
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select id="subStatus">
+            <option>Not started</option>
+            <option selected>In progress</option>
+            <option>Completed</option>
+            <option>Delayed/at risk</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Target (optional)</label><input id="subTarget" /></div>
+        <div class="field"><label>Actual (optional)</label><input id="subActual" /></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Latest update (required)</label><textarea id="subLatestUpdate"></textarea></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Decisions needed (optional)</label><textarea id="subDecisions"></textarea></div>
+      </div>
+      <div class="form-actions">
+        <button id="submitUpdateBtn">POST /initiatives/:id/updates</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT COLUMN: session + response + history -->
+  <div class="right-col">
+    <div class="card">
+      <h2>Session</h2>
+      <div class="session-line"><span class="k">Signed in as</span><span class="v" id="sessionEmail">—</span></div>
+      <div class="session-line"><span class="k">Role</span><span class="v" id="sessionRole">—</span></div>
+      <div class="session-line"><span class="k">Workstream id</span><span class="v" id="sessionWorkstream">—</span></div>
+      <hr class="sep" />
+      <div class="token-box">
+        <input id="tokenDisplay" type="text" readonly placeholder="no token" />
+        <button class="secondary" id="copyTokenBtn">Copy</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Response</h2>
+      <div class="resp-meta" id="respMeta">No requests yet.</div>
+      <pre id="responseBody">—</pre>
+    </div>
+
+    <div class="card">
+      <h2>History</h2>
+      <div id="historyList"><div class="empty-hint">Calls you make will show up here.</div></div>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- state ----------
+  const state = {
+    baseUrl: localStorage.getItem('pulse_base_url') || 'http://localhost:3000',
+    token: localStorage.getItem('pulse_token') || '',
+    user: safeParse(localStorage.getItem('pulse_user')),
+    workstreams: [],
+    initiatives: [],
+    history: [],
+  };
+
+  function safeParse(s) { try { return s ? JSON.parse(s) : null; } catch { return null; } }
+  function saveSession() {
+    localStorage.setItem('pulse_token', state.token || '');
+    localStorage.setItem('pulse_user', JSON.stringify(state.user || null));
+  }
+
+  // ---------- DOM helpers ----------
+  const $ = (id) => document.getElementById(id);
+  function el(tag, attrs, children) {
+    const e = document.createElement(tag);
+    attrs = attrs || {};
+    for (const k in attrs) {
+      if (k === 'class') e.className = attrs[k];
+      else if (k === 'html') e.innerHTML = attrs[k];
+      else e.setAttribute(k, attrs[k]);
+    }
+    (children || []).forEach((c) => {
+      if (c == null) return;
+      e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    });
+    return e;
+  }
+  function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+  // ---------- health ----------
+  function setHealth(online) {
+    const dot = $('healthDot');
+    const label = $('healthLabel');
+    dot.className = 'health-dot ' + (online === null ? '' : online ? 'online' : 'offline');
+    label.textContent = online === null ? 'checking…' : online ? 'online' : 'offline';
+  }
+  async function pingHealth() {
+    try {
+      const res = await fetch(state.baseUrl.replace(/\/$/, '') + '/health');
+      setHealth(res.ok);
+    } catch {
+      setHealth(false);
+    }
+  }
+
+  // ---------- core API caller ----------
+  async function callApi(method, path, opts) {
+    opts = opts || {};
+    const url = state.baseUrl.replace(/\/$/, '') + path;
+    const headers = {};
+    if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
+    if (opts.auth !== false && state.token) headers['Authorization'] = 'Bearer ' + state.token;
+
+    const started = performance.now();
+    let record;
+    try {
+      const res = await fetch(url, {
+        method,
+        headers,
+        body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      });
+      const ms = Math.round(performance.now() - started);
+      const contentType = res.headers.get('content-type') || '';
+      let data = null;
+      if (res.status !== 204) {
+        if (contentType.includes('application/json')) {
+          data = await res.json();
+        } else {
+          data = await res.text();
+        }
+      }
+      record = { method, path, url, status: res.status, ok: res.ok, ms, data, time: new Date() };
+      setHealth(true);
+    } catch (err) {
+      const ms = Math.round(performance.now() - started);
+      record = { method, path, url, status: 0, ok: false, ms, data: { error: String(err.message || err) }, time: new Date() };
+      setHealth(false);
+    }
+    pushHistory(record);
+    renderResponse(record);
+    return record;
+  }
+
+  // ---------- response viewer ----------
+  function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function syntaxHighlight(value) {
+    const json = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+    const escaped = escapeHtml(json);
+    return escaped.replace(
+      /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false)\b|\bnull\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
+      (match) => {
+        let cls = 'json-number';
+        if (/^"/.test(match)) cls = /:$/.test(match) ? 'json-key' : 'json-string';
+        else if (/true|false/.test(match)) cls = 'json-boolean';
+        else if (/null/.test(match)) cls = 'json-null';
+        return '<span class="' + cls + '">' + match + '</span>';
+      }
+    );
+  }
+  function statusBadgeClass(status) {
+    if (status === 0) return 'status-0';
+    return 'status-' + String(status)[0];
+  }
+  function renderResponse(record) {
+    const meta = $('respMeta');
+    clear(meta);
+    meta.appendChild(el('span', { class: 'method-badge method-' + record.method }, [record.method]));
+    meta.appendChild(el('span', { class: 'badge ' + statusBadgeClass(record.status) }, [
+      record.status === 0 ? 'NETWORK ERROR' : String(record.status),
+    ]));
+    meta.appendChild(el('span', {}, [record.ms + 'ms']));
+    meta.appendChild(el('span', { class: 'url' }, [record.url]));
+
+    const body = $('responseBody');
+    if (record.data === null || record.data === undefined) {
+      body.textContent = '(no body)';
+    } else {
+      body.innerHTML = syntaxHighlight(record.data);
+    }
+  }
+
+  // ---------- history ----------
+  function pushHistory(record) {
+    state.history.unshift(record);
+    if (state.history.length > 30) state.history.pop();
+    renderHistory();
+  }
+  function renderHistory() {
+    const list = $('historyList');
+    clear(list);
+    if (state.history.length === 0) {
+      list.appendChild(el('div', { class: 'empty-hint' }, ['Calls you make will show up here.']));
+      return;
+    }
+    state.history.forEach((record, idx) => {
+      const item = el('div', { class: 'history-item' }, [
+        el('span', { class: 'method-badge method-' + record.method }, [record.method]),
+        el('span', { class: 'badge ' + statusBadgeClass(record.status) }, [
+          record.status === 0 ? 'ERR' : String(record.status),
+        ]),
+        el('span', { class: 'path' }, [record.path]),
+      ]);
+      item.addEventListener('click', () => renderResponse(record));
+      list.appendChild(item);
+    });
+  }
+
+  // ---------- session UI ----------
+  function renderSession() {
+    $('sessionEmail').textContent = state.user ? state.user.email : '—';
+    $('sessionRole').textContent = state.user ? state.user.role : '—';
+    $('sessionWorkstream').textContent = state.user ? (state.user.workstreamId || '(none — admin/smo)') : '—';
+    $('tokenDisplay').value = state.token || '';
+  }
+
+  // ---------- tables ----------
+  function ragClass(status) {
+    return 'rag-' + String(status).toLowerCase().replace(/[^a-z]+/g, '-').replace(/-+$/, '');
+  }
+  function renderTable(containerId, columns, rows, emptyMsg) {
+    const wrap = $(containerId);
+    clear(wrap);
+    if (!rows || rows.length === 0) {
+      wrap.appendChild(el('div', { class: 'empty-hint' }, [emptyMsg || 'No data.']));
+      return;
+    }
+    const table = el('table');
+    const thead = el('thead', {}, [el('tr', {}, columns.map((c) => el('th', {}, [c.label])))]);
+    const tbody = el('tbody');
+    rows.forEach((row) => {
+      const tr = el('tr');
+      columns.forEach((c) => {
+        const td = el('td', c.mono ? { class: 'mono' } : {});
+        const rendered = c.render ? c.render(row) : (row[c.key] == null ? '' : String(row[c.key]));
+        if (rendered instanceof Node) td.appendChild(rendered);
+        else td.textContent = rendered;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+  }
+  function statusBadgeNode(status) {
+    return el('span', { class: 'badge ' + ragClass(status) }, [status]);
+  }
+  function shortId(id) {
+    return id ? id.slice(0, 8) + '…' : '';
+  }
+
+  // ---------- datalists ----------
+  function fillDatalist(id, items, valueKey, labelFn) {
+    const dl = $(id);
+    clear(dl);
+    items.forEach((item) => {
+      dl.appendChild(el('option', { value: item[valueKey] }, [labelFn(item)]));
+    });
+  }
+
+  // ---------- field helpers ----------
+  function val(id) { return $(id).value.trim(); }
+  function orUndefined(v) { return v === '' ? undefined : v; }
+
+  // ================= WIRING =================
+
+  // base URL
+  $('baseUrl').value = state.baseUrl;
+  $('baseUrl').addEventListener('change', () => {
+    state.baseUrl = $('baseUrl').value.trim() || 'http://localhost:3000';
+    localStorage.setItem('pulse_base_url', state.baseUrl);
+    pingHealth();
+  });
+  $('pingBtn').addEventListener('click', pingHealth);
+
+  // auth
+  $('loginBtn').addEventListener('click', async () => {
+    const record = await callApi('POST', '/auth/login', {
+      auth: false,
+      body: { email: val('loginEmail'), password: $('loginPassword').value },
+    });
+    if (record.ok) {
+      state.token = record.data.accessToken;
+      state.user = record.data.user;
+      saveSession();
+      renderSession();
+    }
+  });
+  $('logoutBtn').addEventListener('click', async () => {
+    await callApi('POST', '/auth/logout', { auth: true });
+    state.token = '';
+    state.user = null;
+    saveSession();
+    renderSession();
+  });
+  $('meBtn').addEventListener('click', async () => {
+    const record = await callApi('GET', '/auth/me');
+    if (record.ok) {
+      state.user = record.data;
+      saveSession();
+      renderSession();
+    }
+  });
+  $('copyTokenBtn').addEventListener('click', () => {
+    if (!state.token) return;
+    navigator.clipboard.writeText(state.token).catch(() => {});
+  });
+
+  // workstreams
+  $('listWorkstreamsBtn').addEventListener('click', async () => {
+    const record = await callApi('GET', '/workstreams');
+    if (record.ok) {
+      state.workstreams = record.data;
+      fillDatalist('workstreamDatalist', state.workstreams, 'id', (w) => w.name);
+      renderTable('workstreamsTableWrap',
+        [
+          { label: 'Id', key: 'id', mono: true, render: (r) => shortId(r.id) },
+          { label: 'Name', key: 'name' },
+          { label: 'Sort order', key: 'sort_order' },
+        ],
+        state.workstreams, 'No workstreams.');
+    }
+  });
+  $('summaryBtn').addEventListener('click', async () => {
+    const record = await callApi('GET', '/workstreams/summary');
+    if (record.ok) {
+      renderTable('workstreamsTableWrap',
+        [
+          { label: 'Workstream', key: 'workstream' },
+          { label: 'Total', key: 'initiatives' },
+          { label: 'Not started', key: 'not_started' },
+          { label: 'In progress', key: 'in_progress' },
+          { label: 'Completed', key: 'completed' },
+          { label: 'Delayed/at risk', key: 'delayed_at_risk' },
+        ],
+        record.data, 'No summary rows.');
+    }
+  });
+  $('getWorkstreamBtn').addEventListener('click', () => {
+    const id = val('workstreamIdInput');
+    if (!id) return;
+    callApi('GET', '/workstreams/' + encodeURIComponent(id));
+  });
+
+  // initiatives
+  $('listInitiativesBtn').addEventListener('click', async () => {
+    const params = new URLSearchParams();
+    const ws = val('filterWorkstream');
+    const status = $('filterStatus').value;
+    if (ws) params.set('workstream_id', ws);
+    if (status) params.set('status', status);
+    const qs = params.toString();
+    const record = await callApi('GET', '/initiatives' + (qs ? '?' + qs : ''));
+    if (record.ok) {
+      state.initiatives = record.data;
+      fillDatalist('initiativeDatalist', state.initiatives, 'id', (i) => i.title);
+      renderTable('initiativesTableWrap',
+        [
+          { label: 'Id', key: 'id', mono: true, render: (r) => shortId(r.id) },
+          { label: 'Title', key: 'title' },
+          { label: 'L-Gate', key: 'l_gate_stage' },
+          { label: 'Status', render: (r) => statusBadgeNode(r.status) },
+        ],
+        state.initiatives, 'No initiatives.');
+    }
+  });
+  $('getInitiativeBtn').addEventListener('click', () => {
+    const id = val('initiativeIdInput');
+    if (!id) return;
+    callApi('GET', '/initiatives/' + encodeURIComponent(id));
+  });
+  $('patchInitiativeBtn').addEventListener('click', () => {
+    const id = val('initiativeIdInput');
+    if (!id) { alert('Enter an initiative id first.'); return; }
+    const body = {};
+    const map = {
+      corTitle: 'title', corDirectorate: 'directorate_owner', corLGate: 'l_gate_stage',
+      corKpi: 'kpi_expected_impact', corTarget: 'target', corActual: 'actual',
+      corStatus: 'status', corLatestUpdate: 'latest_update', corDecisions: 'decisions_needed',
+      corUpdateAsAt: 'update_as_at',
+    };
+    Object.entries(map).forEach(([fieldId, key]) => {
+      const v = $(fieldId).value.trim();
+      if (v !== '') body[key] = v;
+    });
+    if (Object.keys(body).length === 0) { alert('Fill in at least one field to correct.'); return; }
+    callApi('PATCH', '/initiatives/' + encodeURIComponent(id), { body });
+  });
+
+  // milestones
+  $('listMilestonesBtn').addEventListener('click', async () => {
+    const id = val('milestoneInitiativeId');
+    if (!id) { alert('Enter an initiative id.'); return; }
+    const record = await callApi('GET', '/initiatives/' + encodeURIComponent(id) + '/milestones');
+    if (record.ok) {
+      renderTable('milestonesTableWrap',
+        [
+          { label: '#', key: 'sequence' },
+          { label: 'Title', key: 'title' },
+          { label: 'Target date', key: 'target_date' },
+          { label: 'Status', render: (r) => statusBadgeNode(r.status) },
+        ],
+        record.data, 'No milestones.');
+    }
+  });
+
+  // updates
+  $('listUpdatesBtn').addEventListener('click', async () => {
+    const id = val('updatesInitiativeId');
+    if (!id) { alert('Enter an initiative id.'); return; }
+    const record = await callApi('GET', '/initiatives/' + encodeURIComponent(id) + '/updates');
+    if (record.ok) {
+      renderTable('updatesTableWrap',
+        [
+          { label: 'Meeting date', key: 'meeting_date', mono: true },
+          { label: 'Status', render: (r) => statusBadgeNode(r.status) },
+          { label: 'Submitted by', key: 'submitted_by', mono: true, render: (r) => shortId(r.submitted_by) },
+          { label: 'Latest update', key: 'latest_update' },
+        ],
+        record.data, 'No updates submitted yet.');
+    }
+  });
+  $('submitUpdateBtn').addEventListener('click', () => {
+    const id = val('updatesInitiativeId');
+    if (!id) { alert('Enter an initiative id above (in the Updates section).'); return; }
+    const latestUpdate = $('subLatestUpdate').value.trim();
+    const meetingDate = $('subMeetingDate').value;
+    if (!latestUpdate || !meetingDate) { alert('Meeting date and latest update are required.'); return; }
+    const body = {
+      meeting_date: meetingDate,
+      status: $('subStatus').value,
+      latest_update: latestUpdate,
+      target: orUndefined($('subTarget').value.trim()),
+      actual: orUndefined($('subActual').value.trim()),
+      decisions_needed: orUndefined($('subDecisions').value.trim()),
+    };
+    callApi('POST', '/initiatives/' + encodeURIComponent(id) + '/updates', { body });
+  });
+
+  // ---------- init ----------
+  $('subMeetingDate').value = new Date().toISOString().slice(0, 10);
+  renderSession();
+  renderHistory();
+  pingHealth();
+})();
+</script>
+</body>
+</html>
