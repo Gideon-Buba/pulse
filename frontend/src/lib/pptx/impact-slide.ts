@@ -936,7 +936,7 @@ function addHeatmapSlide(
     fontSize: 21,
     bold: true,
     color: '1A1A1A',
-    valign: 'ctr',
+    valign: 'middle',
   });
   slide.addText([{ text: 'Update as of ' }, { text: formatAsOfDate(params.asOfDate), options: {} }], {
     x: HM.subtitleX,
