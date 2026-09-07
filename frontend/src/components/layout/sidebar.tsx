@@ -1,10 +1,11 @@
 import type { JSX } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ListChecks, Layers, Download } from 'lucide-react';
+import { LayoutDashboard, ListChecks, Layers, Download, Presentation } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/impact', label: 'Impact View', icon: Presentation, end: false },
   { to: '/workstreams', label: 'Workstreams', icon: Layers, end: false },
   { to: '/initiatives', label: 'Initiatives', icon: ListChecks, end: false },
   { to: '/exports', label: 'Exports', icon: Download, end: false },

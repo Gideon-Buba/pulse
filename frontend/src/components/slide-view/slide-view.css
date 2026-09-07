@@ -1,0 +1,303 @@
+/*
+ * Scoped to the Impact View page and the Exports page preview strips (root
+ * .slide-view wrapper) — reproduces the real NRS TWG deck's visual language
+ * (see lib/pptx/impact-slide.ts, the authoritative pixel-measured spec).
+ * Tokens are namespaced --slide-* and every rule is scoped under .slide-view
+ * so nothing here leaks into the rest of the app, same convention as
+ * dashboard.css's --nd- token set scoped under its own .nd wrapper.
+ */
+.slide-view {
+  --slide-not-started: #7d858b;
+  --slide-in-progress: #fed9d6;
+  --slide-completed: #cbf3c7;
+  --slide-delayed: #d63227;
+  --slide-header-band: #3e4346;
+  --slide-divider: #b0b0b0;
+  --slide-line: #757575;
+  --slide-same-update: #97150b;
+  --slide-target: #97150b;
+  --slide-actual: #288c1d;
+  --slide-accent: #d63227;
+  --slide-ink: #1a1a1a;
+  color: var(--slide-ink);
+  font-feature-settings: 'tnum';
+}
+
+/* ---- shared 6-column grid ---- */
+.slide-columns {
+  display: grid;
+  grid-template-columns: 11.7fr 11fr 26.3fr 7.6fr 6.9fr 24.4fr;
+  column-gap: 12px;
+}
+
+/* ---- column header band ---- */
+.slide-header-band {
+  display: grid;
+  grid-template-columns: 11.7fr 11fr 26.3fr 7.6fr 6.9fr 24.4fr;
+  column-gap: 12px;
+  background: var(--slide-header-band);
+  border-radius: 4px 4px 0 0;
+  padding: 10px 14px;
+}
+.slide-header-band__cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+.slide-header-band__cell img {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+/* ---- per-initiative block ---- */
+.slide-initiative {
+  padding: 12px 14px;
+  border: 1px solid var(--slide-divider);
+  border-top: none;
+}
+.slide-initiative:last-child {
+  border-radius: 0 0 4px 4px;
+}
+.slide-initiative__name {
+  grid-column: 1;
+  align-self: start;
+  font-weight: 700;
+  font-size: 13px;
+  padding-right: 8px;
+}
+.slide-initiative__name a {
+  color: inherit;
+  text-decoration: none;
+}
+.slide-initiative__name a:hover {
+  text-decoration: underline;
+}
+.slide-initiative__kpi {
+  grid-column: 2;
+  align-self: start;
+  font-size: 12px;
+  padding-right: 8px;
+}
+.slide-initiative__kpi-target {
+  display: block;
+  margin-top: 4px;
+  font-style: italic;
+  color: var(--slide-target);
+}
+.slide-initiative__kpi-actual {
+  display: block;
+  font-style: italic;
+  color: var(--slide-actual);
+}
+.slide-initiative__update {
+  grid-column: 6;
+  align-self: start;
+  font-size: 12px;
+  color: #333;
+}
+
+.slide-milestone-title {
+  grid-column: 3;
+  font-size: 12px;
+  align-self: center;
+}
+.slide-milestone-title--empty {
+  font-style: italic;
+  color: var(--slide-line);
+}
+.slide-milestone-status {
+  grid-column: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.slide-milestone-timeline {
+  grid-column: 5;
+  font-size: 11.5px;
+  color: #333;
+  align-self: center;
+}
+.slide-milestone-cell--divided {
+  border-top: 1px solid var(--slide-line);
+  margin-top: 6px;
+  padding-top: 6px;
+}
+
+/* ---- status dot ---- */
+.slide-status-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+.slide-status-dot--sm {
+  width: 8px;
+  height: 8px;
+}
+
+/* ---- legend ---- */
+.slide-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 6px 0 14px;
+}
+.slide-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #4a4a4a;
+}
+
+/* ---- L-gate badge ---- */
+.slide-lgate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 10.5px;
+  color: #4a4a4a;
+}
+.slide-lgate__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: #fff;
+  border: 1.5px solid var(--slide-ink);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--slide-ink);
+  flex-shrink: 0;
+}
+
+/* ---- "same update as last TWG" pill ---- */
+.slide-same-update-pill {
+  display: inline-block;
+  margin-top: 8px;
+  background: var(--slide-same-update);
+  color: #fff;
+  font-weight: 700;
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+  padding: 3px 8px;
+  border-radius: 3px;
+}
+
+/* ---- workstream section header ---- */
+.slide-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.slide-section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.slide-section-chevron {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--slide-ink);
+  transition: transform 0.15s ease;
+}
+.slide-section-chevron--collapsed {
+  transform: rotate(-90deg);
+}
+.slide-section-title {
+  font-family: var(--font-display, inherit);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--slide-ink);
+}
+.slide-section-accent {
+  width: 42px;
+  height: 4px;
+  background: var(--slide-accent);
+  margin: 6px 0 8px;
+}
+.slide-section-asof {
+  font-style: italic;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+/* ---- heatmap section ---- */
+.slide-heatmap-row {
+  display: grid;
+  grid-template-columns: 3fr 1.6fr 3.5fr 0.8fr 1fr 1.5fr;
+  column-gap: 12px;
+  align-items: center;
+  padding: 7px 4px;
+  border-top: 1px solid var(--slide-divider);
+  font-size: 12px;
+}
+.slide-heatmap-head {
+  display: grid;
+  grid-template-columns: 3fr 1.6fr 3.5fr 0.8fr 1fr 1.5fr;
+  column-gap: 12px;
+  padding: 0 4px 8px;
+  border-bottom: 2px solid var(--slide-ink);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #757575;
+}
+.slide-progress-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+/* ---- preview strip (Exports page) ---- */
+.slide-preview-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--slide-header-band);
+  border-radius: 4px;
+}
+.slide-preview-strip__chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.slide-scroll {
+  overflow-x: auto;
+}
+
+@media (max-width: 900px) {
+  .slide-header-band,
+  .slide-initiative,
+  .slide-heatmap-head,
+  .slide-heatmap-row {
+    min-width: 760px;
+  }
+}

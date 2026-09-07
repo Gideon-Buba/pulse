@@ -1,49 +1,25 @@
 import { useState, type JSX } from 'react';
+import { Link } from 'react-router-dom';
 import { Download, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
-import pptxgen from 'pptxgenjs';
 import { api } from '@/lib/api';
 import { useApiQuery } from '@/hooks/use-api-query';
+import { buildImpactInitiativeRow, workstreamAsOfDate } from '@/lib/build-impact-row';
+import { downloadImpactDeck, fileSlug } from '@/lib/export-pptx';
+import { slugify } from '@/lib/slugify';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { buildImpactDeck, type ImpactInitiative, type WorkstreamGroup } from '@/lib/pptx/impact-slide';
+import { SlidePreviewStrip } from '@/components/slide-view/slide-preview-strip';
+import type { WorkstreamGroup } from '@/lib/pptx/impact-slide';
 import { SectionHeading } from '@/components/section-heading';
-import type { Initiative, Workstream } from '@/types/api';
+import { RAG_STATUSES, type Initiative, type RagStatus, type Workstream } from '@/types/api';
+import '@/components/slide-view/slide-view.css';
 
-async function buildInitiativeRow(init: Initiative): Promise<ImpactInitiative> {
-  const [milestones, updates] = await Promise.all([
-    api.milestones.listForInitiative(init.id),
-    api.updates.listForInitiative(init.id),
-  ]);
-
-  const sortedUpdates = [...updates].sort((a, b) => b.meeting_date.localeCompare(a.meeting_date));
-  const sameAsLastTwg =
-    sortedUpdates.length >= 2 &&
-    sortedUpdates[0].latest_update.trim() === sortedUpdates[1].latest_update.trim();
-
-  return {
-    title: init.title,
-    kpi: init.kpi_expected_impact,
-    target: init.target,
-    actual: init.actual,
-    lGate: init.l_gate_stage,
-    status: init.status,
-    latestUpdate: init.latest_update,
-    sameAsLastTwg,
-    milestones: [...milestones]
-      .sort((a, b) => a.sequence - b.sequence)
-      .map((m) => ({ title: m.title, targetDate: m.target_date, status: m.status })),
-  };
-}
-
-function workstreamAsOfDate(initiatives: Initiative[]): string | null {
-  const dates = initiatives.map((i) => i.update_as_at).filter((d): d is string => Boolean(d));
-  return dates.length ? dates.reduce((max, d) => (d > max ? d : max)) : null;
-}
-
-function fileSlug(name: string): string {
-  return name.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
+function countByStatus(initiatives: Initiative[]): Record<RagStatus, number> {
+  const counts = Object.fromEntries(RAG_STATUSES.map((s) => [s, 0])) as Record<RagStatus, number>;
+  for (const i of initiatives) counts[i.status] += 1;
+  return counts;
 }
 
 export default function ExportsPage(): JSX.Element {
@@ -61,10 +37,11 @@ export default function ExportsPage(): JSX.Element {
     }
     setExportingId(ws.id);
     try {
-      const rows = await Promise.all(wsInitiatives.map(buildInitiativeRow));
-      const pptx = new pptxgen();
-      buildImpactDeck(pptx, [{ workstreamName: ws.name, asOfDate: workstreamAsOfDate(wsInitiatives), initiatives: rows }]);
-      await pptx.writeFile({ fileName: `NRS_TWG_${fileSlug(ws.name)}.pptx` });
+      const rows = await Promise.all(wsInitiatives.map(buildImpactInitiativeRow));
+      await downloadImpactDeck(
+        [{ workstreamName: ws.name, asOfDate: workstreamAsOfDate(wsInitiatives), initiatives: rows }],
+        `NRS_TWG_${fileSlug(ws.name)}.pptx`,
+      );
       toast.success(`${ws.name} slide${rows.length > 1 ? 's' : ''} exported.`);
     } catch {
       toast.error(`Could not export ${ws.name}.`);
@@ -81,12 +58,10 @@ export default function ExportsPage(): JSX.Element {
       for (const ws of workstreams) {
         const wsInitiatives = initiatives.filter((i) => i.workstream_id === ws.id);
         if (wsInitiatives.length === 0) continue;
-        const rows = await Promise.all(wsInitiatives.map(buildInitiativeRow));
+        const rows = await Promise.all(wsInitiatives.map(buildImpactInitiativeRow));
         groups.push({ workstreamName: ws.name, asOfDate: workstreamAsOfDate(wsInitiatives), initiatives: rows });
       }
-      const pptx = new pptxgen();
-      buildImpactDeck(pptx, groups);
-      await pptx.writeFile({ fileName: 'NRS_TWG_Full_Deck.pptx' });
+      await downloadImpactDeck(groups, 'NRS_TWG_Full_Deck.pptx');
       toast.success('Full TWG deck exported.');
     } catch {
       toast.error('Could not export the full deck.');
@@ -96,12 +71,16 @@ export default function ExportsPage(): JSX.Element {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="max-w-2xl text-sm text-muted-foreground">
+    <div className="slide-view space-y-6">
+      <div className="flex flex-col gap-4 rounded-md bg-(--slide-header-band) p-5 sm:flex-row sm:items-center sm:justify-between">
+        <p className="max-w-2xl text-sm text-white/85">
           Generates the &ldquo;Impact across initiatives&rdquo; slides — plus a closing delivery heatmap — in
           the exact TWG deck format — same colors, layout, header icons and logo — filled with live data
-          instead of a manual compile.
+          instead of a manual compile. Preview the same look in-app on the{' '}
+          <Link to="/impact" className="font-medium text-white underline underline-offset-2">
+            Impact View
+          </Link>{' '}
+          page first.
         </p>
         <Button onClick={exportFullDeck} disabled={loading || exportingId !== null} className="shrink-0">
           <Download className="h-4 w-4" />
@@ -109,7 +88,7 @@ export default function ExportsPage(): JSX.Element {
         </Button>
       </div>
 
-      <div className="rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
+      <div className="rounded-md border-l-4 border-l-(--slide-accent) bg-amber-50 px-4 py-3 text-sm text-amber-900">
         The delivery heatmap&rsquo;s &ldquo;Initiative progress&rdquo; dot and &ldquo;Read&rdquo; column are a
         human editorial judgment call in the original deck, not something Pulse&rsquo;s data can reproduce — ours
         are computed directly from each initiative&rsquo;s current status instead, so read them as status, not
@@ -126,13 +105,15 @@ export default function ExportsPage(): JSX.Element {
                 <Skeleton className="h-5 w-2/3" />
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="mt-3 h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
               </CardContent>
             </Card>
           ))}
 
         {!loading &&
           workstreams?.map((ws) => {
-            const count = (initiatives ?? []).filter((i) => i.workstream_id === ws.id).length;
+            const wsInitiatives = (initiatives ?? []).filter((i) => i.workstream_id === ws.id);
+            const count = wsInitiatives.length;
             return (
               <Card key={ws.id} className="border-l-[3px] border-l-transparent transition-colors hover:border-l-primary hover:shadow-md">
                 <CardHeader>
@@ -141,16 +122,28 @@ export default function ExportsPage(): JSX.Element {
                     {count} initiative{count === 1 ? '' : 's'}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    disabled={count === 0 || exportingId !== null}
-                    onClick={() => exportWorkstream(ws)}
-                  >
-                    <FileDown className="h-4 w-4" />
-                    {exportingId === ws.id ? 'Exporting…' : 'Export PPTX'}
-                  </Button>
+                <CardContent className="space-y-3">
+                  {count > 0 && <SlidePreviewStrip statusCounts={countByStatus(wsInitiatives)} />}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      disabled={count === 0 || exportingId !== null}
+                      onClick={() => exportWorkstream(ws)}
+                    >
+                      <FileDown className="h-4 w-4" />
+                      {exportingId === ws.id ? 'Exporting…' : 'Export PPTX'}
+                    </Button>
+                    {count > 0 ? (
+                      <Button variant="ghost" asChild>
+                        <Link to={`/impact#${slugify(ws.name)}`}>View live</Link>
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" disabled>
+                        View live
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             );

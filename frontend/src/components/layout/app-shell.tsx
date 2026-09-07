@@ -6,6 +6,7 @@ import { MobileNav } from './mobile-nav';
 
 function getTitle(pathname: string): string {
   if (pathname === '/') return 'Dashboard';
+  if (pathname.startsWith('/impact')) return 'Impact View';
   if (pathname.startsWith('/workstreams')) return 'Workstreams';
   if (pathname.startsWith('/initiatives')) return 'Initiatives';
   if (pathname.startsWith('/exports')) return 'Exports';
