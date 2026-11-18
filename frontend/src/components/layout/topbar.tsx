@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Menu, User } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
+import { NotificationsMenu } from '@/components/notifications-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -36,7 +37,12 @@ export function Topbar({ title, onMenuClick }: { title: string; onMenuClick: () 
         <h1 className="text-lg font-semibold tracking-tight text-foreground">{title}</h1>
       </div>
 
-      {user && (
+      <div className="flex items-center gap-1">
+        {/* Admins are the only ones who receive notifications today (account
+            requests), so the bell would always be empty for anyone else. */}
+        {user?.role === 'admin' && <NotificationsMenu />}
+
+        {user && (
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-2.5 rounded-md py-1 pl-1 pr-2 outline-none transition-colors hover:bg-accent">
             <Avatar className="h-8 w-8">
@@ -60,8 +66,9 @@ export function Topbar({ title, onMenuClick }: { title: string; onMenuClick: () 
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
-      )}
+          </DropdownMenu>
+        )}
+      </div>
     </header>
   );
 }

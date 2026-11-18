@@ -2,8 +2,9 @@ import 'reflect-metadata';
 import { writeFileSync } from 'fs';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { buildOpenApiDocument } from './openapi';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -27,17 +28,13 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  const config = new DocumentBuilder()
-    .setTitle('Pulse API')
-    .setDescription('NRS TWG Initiative Tracker')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
+  const document = buildOpenApiDocument(app);
   SwaggerModule.setup('api/docs', app, document);
 
   // Static OpenAPI spec — this is the file Gideon hands to Lovable as the
   // API contract. Regenerate on every shape change; a stale copy is a bug.
+  // `npm run openapi` writes the same file without needing real Supabase
+  // credentials or a listening port.
   writeFileSync('./openapi.json', JSON.stringify(document, null, 2));
 
   const port = process.env.PORT ? Number(process.env.PORT) : 3000;

@@ -18,6 +18,13 @@ export type LGate = 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
 
 export type UserRole = 'admin' | 'smo' | 'workstream_lead';
 
+/**
+ * Account approval state (migration 005). A self-service sign-up lands as
+ * 'pending' and is refused at sign-in until an admin approves it — see
+ * `AccountApprovalService` / the Users section.
+ */
+export type AccountStatus = 'pending' | 'approved' | 'rejected';
+
 // These are `type` aliases, not `interface`s, deliberately: supabase-js's
 // generic inference for `.insert()`/`.update()` requires each Row/Insert/
 // Update to structurally satisfy `Record<string, unknown>`, and a TS
@@ -41,6 +48,31 @@ export type Profile = {
   role: UserRole;
   workstream_id: string | null; // null for admin/smo
   created_at: string;
+  status: AccountStatus;
+  approved_at: string | null;
+  approved_by: string | null; // profiles.id of the admin who actioned it
+  rejection_reason: string | null;
+};
+
+/** Per-recipient notification feed. Inserted service-role-side only. */
+export type Notification = {
+  id: string;
+  recipient_id: string;
+  type: string; // e.g. 'account_request'
+  title: string;
+  body: string | null;
+  link: string | null;
+  subject_email: string | null;
+  read_at: string | null;
+  created_at: string;
+};
+
+/** Server-only key/value settings. RLS-locked to the service-role key. */
+export type AppSetting = {
+  key: string;
+  value: string;
+  updated_at: string;
+  updated_by: string | null;
 };
 
 export type Initiative = {
@@ -128,8 +160,34 @@ export type Database = {
       };
       profiles: {
         Row: Profile;
-        Insert: Omit<Profile, 'created_at'>;
+        Insert: Omit<
+          Profile,
+          'created_at' | 'status' | 'approved_at' | 'approved_by' | 'rejection_reason'
+        > & {
+          status?: AccountStatus;
+          approved_at?: string | null;
+          approved_by?: string | null;
+          rejection_reason?: string | null;
+        };
         Update: Partial<Omit<Profile, 'id'>>;
+        Relationships: [];
+      };
+      notifications: {
+        Row: Notification;
+        Insert: Omit<Notification, 'id' | 'created_at' | 'read_at'> & {
+          id?: string;
+          read_at?: string | null;
+        };
+        Update: Partial<Omit<Notification, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
+      app_settings: {
+        Row: AppSetting;
+        Insert: Omit<AppSetting, 'updated_at' | 'updated_by'> & {
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: Partial<Omit<AppSetting, 'key'>>;
         Relationships: [];
       };
       initiatives: {

@@ -43,9 +43,128 @@
           },
           "401": {
             "description": "Email or password is incorrect."
+          },
+          "403": {
+            "description": "Credentials are valid but the account has not been approved by an admin yet (or was rejected). The response message is written to be shown to the user as-is."
           }
         },
         "summary": "Sign in with email and password, returning a bearer token for use everywhere else.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/signup": {
+      "post": {
+        "operationId": "AuthController_signup",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignupResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed — most commonly a non-NRS email address (only @nrs.gov.ng is accepted) or a password under 8 characters."
+          },
+          "409": {
+            "description": "An account or a pending request already exists for this email address."
+          }
+        },
+        "summary": "Request a Pulse account with an NRS work email. Creates the account in a pending state and notifies every admin — no session is returned, and the person cannot sign in until an admin approves them in the Users section.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "operationId": "AuthController_forgotPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForgotPasswordResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not a valid @nrs.gov.ng email address."
+          },
+          "403": {
+            "description": "The account exists but is still pending approval, or was rejected."
+          },
+          "404": {
+            "description": "No Pulse account exists for this email address."
+          },
+          "503": {
+            "description": "Supabase could not send the email (e.g. SMTP is not configured on the project). The admin can issue a reset link manually from the Users section instead."
+          }
+        },
+        "summary": "Email a password reset link. Only works for an email that already has an approved Pulse account — an unknown address gets a 404 rather than a silent success, so nobody waits on an email that was never going to arrive.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "operationId": "AuthController_resetPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Password updated — the user can now sign in."
+          },
+          "400": {
+            "description": "The new password is shorter than 8 characters."
+          },
+          "401": {
+            "description": "The reset link is invalid or has expired."
+          },
+          "403": {
+            "description": "The account is still pending approval, or was rejected."
+          }
+        },
+        "summary": "Set a new password using the recovery token from a reset link (emailed, or issued by an admin).",
         "tags": [
           "auth"
         ]
@@ -91,6 +210,9 @@
           },
           "401": {
             "description": "Missing or invalid bearer token."
+          },
+          "403": {
+            "description": "The account was rejected or un-approved after this token was issued."
           }
         },
         "security": [
@@ -961,6 +1083,590 @@
           "updates"
         ]
       }
+    },
+    "/admin/users-access": {
+      "get": {
+        "operationId": "UsersAccessController_status",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsersAccessStatusDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not an admin."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Whether a Users-section access code has been set on this deployment. Lets the UI say \"not configured yet\" instead of silently rejecting every code typed.",
+        "tags": [
+          "users-access"
+        ]
+      }
+    },
+    "/admin/users-access/unlock": {
+      "post": {
+        "operationId": "UsersAccessController_unlock",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnlockUsersSectionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnlockUsersSectionResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Incorrect access code."
+          },
+          "403": {
+            "description": "Caller is not an admin."
+          },
+          "503": {
+            "description": "No access code has been configured yet — run `npm run users:set-code` in backend/."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Exchange the shared Users-section access code for a short-lived ticket (30 minutes). Send that ticket as the `x-pulse-users-access` header on every /admin/users request. This is a second factor on top of being an admin: signing in to Pulse is not enough to read or manage accounts.",
+        "tags": [
+          "users-access"
+        ]
+      }
+    },
+    "/admin/users-access/code": {
+      "post": {
+        "operationId": "UsersAccessController_changeCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeAccessCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Access code changed."
+          },
+          "400": {
+            "description": "The new code is shorter than 8 characters."
+          },
+          "401": {
+            "description": "The current access code is incorrect."
+          },
+          "403": {
+            "description": "Caller is not an admin."
+          },
+          "503": {
+            "description": "No access code has been configured yet."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rotate the Users-section access code. Requires the current code — there is no \"forgot the access code\" flow by design. If it is lost, reset it server-side with `npm run users:set-code` in backend/.",
+        "tags": [
+          "users-access"
+        ]
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "operationId": "UsersController_list",
+        "parameters": [
+          {
+            "name": "x-pulse-users-access",
+            "in": "header",
+            "description": "Users-section access ticket from POST /admin/users-access/unlock. Expires after 30 minutes, after which the access code must be entered again.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Only return accounts in this approval state. Omit for all accounts.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved",
+                "rejected"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserAccountDto"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not an admin, or has not unlocked the Users section."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List every Pulse account with its approval state, role and workstream — newest request first. Filter with ?status=pending to see just the accounts waiting for approval.",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/admin/users/{id}/approve": {
+      "post": {
+        "operationId": "UsersController_approve",
+        "parameters": [
+          {
+            "name": "x-pulse-users-access",
+            "in": "header",
+            "description": "Users-section access ticket from POST /admin/users-access/unlock. Expires after 30 minutes, after which the access code must be entered again.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Profile id (uuid) of the account to approve.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAccountDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "role is workstream_lead but no workstreamId was given."
+          },
+          "403": {
+            "description": "Caller is not an admin, or has not unlocked the Users section."
+          },
+          "404": {
+            "description": "No account (or no workstream) with that id."
+          },
+          "409": {
+            "description": "The account is already approved, or the workstream is archived."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve a pending account, setting the role (and the workstream, for a lead) it should have. The person can sign in as soon as this succeeds.",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/admin/users/{id}/reject": {
+      "post": {
+        "operationId": "UsersController_reject",
+        "parameters": [
+          {
+            "name": "x-pulse-users-access",
+            "in": "header",
+            "description": "Users-section access ticket from POST /admin/users-access/unlock. Expires after 30 minutes, after which the access code must be entered again.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Profile id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAccountDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not an admin, or has not unlocked the Users section."
+          },
+          "404": {
+            "description": "No account with that id."
+          },
+          "409": {
+            "description": "You cannot reject your own account, or the only remaining approved admin."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Decline an account request (or revoke an approved account). The account stays in the list, cannot sign in, and any live session it holds stops working on its next request.",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/admin/users/{id}": {
+      "patch": {
+        "operationId": "UsersController_update",
+        "parameters": [
+          {
+            "name": "x-pulse-users-access",
+            "in": "header",
+            "description": "Users-section access ticket from POST /admin/users-access/unlock. Expires after 30 minutes, after which the access code must be entered again.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Profile id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAccountDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nothing to update, or a lead was left without a workstream."
+          },
+          "403": {
+            "description": "Caller is not an admin, or has not unlocked the Users section."
+          },
+          "404": {
+            "description": "No account (or no workstream) with that id."
+          },
+          "409": {
+            "description": "You cannot remove your own admin role, or demote the only remaining approved admin."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change an existing account’s name, role, or workstream. Role and workstream are kept consistent automatically: a lead must have a workstream, admin/smo must have none.",
+        "tags": [
+          "users"
+        ]
+      },
+      "delete": {
+        "operationId": "UsersController_remove",
+        "parameters": [
+          {
+            "name": "x-pulse-users-access",
+            "in": "header",
+            "description": "Users-section access ticket from POST /admin/users-access/unlock. Expires after 30 minutes, after which the access code must be entered again.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Profile id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Account deleted."
+          },
+          "403": {
+            "description": "Caller is not an admin, or has not unlocked the Users section."
+          },
+          "404": {
+            "description": "No account with that id."
+          },
+          "409": {
+            "description": "You cannot delete your own account, or the only remaining approved admin."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Permanently delete an account. Submitted TWG updates are preserved — the append-only initiative_updates history keeps its rows and simply loses the link to this author.",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/admin/users/{id}/reset-link": {
+      "post": {
+        "operationId": "UsersController_resetLink",
+        "parameters": [
+          {
+            "name": "x-pulse-users-access",
+            "in": "header",
+            "description": "Users-section access ticket from POST /admin/users-access/unlock. Expires after 30 minutes, after which the access code must be entered again.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Profile id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetLinkResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not an admin, or has not unlocked the Users section."
+          },
+          "404": {
+            "description": "No account with that id."
+          },
+          "409": {
+            "description": "The account is not approved yet."
+          },
+          "503": {
+            "description": "Supabase could not generate a recovery link."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Generate a one-time password reset link for an approved account and return it, without emailing anything. Use this when the project has no SMTP configured, or when someone cannot receive the automated email — the admin passes the link on directly.",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "NotificationsController_list",
+        "parameters": [
+          {
+            "name": "unread_only",
+            "required": false,
+            "in": "query",
+            "description": "Return only notifications the caller has not read yet.",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid bearer token."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's own notifications, newest first (max 50). Today the only kind is an account-request alert sent to admins when somebody signs up and needs approval.",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/{id}/read": {
+      "post": {
+        "operationId": "NotificationsController_markRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Notification id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such notification for this caller."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark one of the caller’s own notifications as read.",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/read-all": {
+      "post": {
+        "operationId": "NotificationsController_markAllRead",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "All notifications marked read."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark every unread notification for the caller as read.",
+        "tags": [
+          "notifications"
+        ]
+      }
     }
   },
   "info": {
@@ -1058,6 +1764,108 @@
           "refreshToken",
           "expiresAt",
           "user"
+        ]
+      },
+      "SignupDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "example": "John Lewis",
+            "description": "The person’s full name, as it should appear in Pulse."
+          },
+          "email": {
+            "type": "string",
+            "example": "john.lewis@nrs.gov.ng",
+            "description": "NRS work email. Use your NRS work email (e.g. john.lewis@nrs.gov.ng). Other email domains cannot be used to create a Pulse account."
+          },
+          "password": {
+            "type": "string",
+            "description": "Chosen password, at least 8 characters.",
+            "minLength": 8
+          }
+        },
+        "required": [
+          "fullName",
+          "email",
+          "password"
+        ]
+      },
+      "SignupResponseDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "john.lewis@nrs.gov.ng"
+          },
+          "fullName": {
+            "type": "string",
+            "example": "John Lewis"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "example": "pending",
+            "description": "Always 'pending' from this endpoint. No session is issued — the account cannot sign in until an admin approves it in the Users section."
+          },
+          "message": {
+            "type": "string",
+            "description": "Message to show the user — tells them approval is pending and to contact the admin if it takes too long."
+          }
+        },
+        "required": [
+          "email",
+          "fullName",
+          "status",
+          "message"
+        ]
+      },
+      "ForgotPasswordDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "john.lewis@nrs.gov.ng",
+            "description": "The NRS email of an existing, approved Pulse account. Use your NRS work email (e.g. john.lewis@nrs.gov.ng). Other email domains cannot be used to create a Pulse account."
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "ForgotPasswordResponseDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable confirmation, safe to show the user as-is.",
+            "example": "A password reset link has been sent to john.lewis@nrs.gov.ng."
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "ResetPasswordDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "The recovery token from the emailed reset link (the `access_token` in the link’s URL fragment), or the token from an admin-issued reset link."
+          },
+          "password": {
+            "type": "string",
+            "description": "The new password, at least 8 characters.",
+            "minLength": 8
+          }
+        },
+        "required": [
+          "token",
+          "password"
         ]
       },
       "WorkstreamDto": {
@@ -1672,6 +2480,272 @@
           "meeting_date",
           "status",
           "latest_update"
+        ]
+      },
+      "UsersAccessStatusDto": {
+        "type": "object",
+        "properties": {
+          "configured": {
+            "type": "boolean",
+            "description": "False when no access code has been set on this deployment yet — the Users section stays locked until an admin runs `npm run users:set-code` in backend/."
+          }
+        },
+        "required": [
+          "configured"
+        ]
+      },
+      "UnlockUsersSectionDto": {
+        "type": "object",
+        "properties": {
+          "accessCode": {
+            "type": "string",
+            "description": "The shared Users-section access code. Not the admin’s own login password."
+          }
+        },
+        "required": [
+          "accessCode"
+        ]
+      },
+      "UnlockUsersSectionResponseDto": {
+        "type": "object",
+        "properties": {
+          "ticket": {
+            "type": "string",
+            "description": "Short-lived ticket. Send it as the `x-pulse-users-access` header on every /admin/users request. Bound to this admin — useless with another account’s token."
+          },
+          "expiresAt": {
+            "type": "number",
+            "description": "Unix epoch milliseconds the ticket expires, after which the code must be re-entered."
+          }
+        },
+        "required": [
+          "ticket",
+          "expiresAt"
+        ]
+      },
+      "ChangeAccessCodeDto": {
+        "type": "object",
+        "properties": {
+          "currentAccessCode": {
+            "type": "string",
+            "description": "The access code currently in force."
+          },
+          "newAccessCode": {
+            "type": "string",
+            "description": "The new access code, at least 8 characters.",
+            "minLength": 8
+          }
+        },
+        "required": [
+          "currentAccessCode",
+          "newAccessCode"
+        ]
+      },
+      "UserAccountDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Profile id — matches the Supabase auth user id."
+          },
+          "fullName": {
+            "type": "string",
+            "example": "John Lewis"
+          },
+          "email": {
+            "type": "string",
+            "example": "john.lewis@nrs.gov.ng"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "smo",
+              "workstream_lead"
+            ],
+            "description": "admin can read/write everything and manage users. smo can read/write everything. workstream_lead is scoped to workstreamId."
+          },
+          "workstreamId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The workstream this user is scoped to. Null for admin/smo."
+          },
+          "workstreamName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Name of that workstream, resolved for display. Null when workstreamId is null."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "description": "'pending' accounts exist but cannot sign in. Only an admin can move an account to 'approved'."
+          },
+          "approvedAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO timestamp this account was approved or rejected."
+          },
+          "approvedBy": {
+            "type": "string",
+            "nullable": true,
+            "description": "Profile id of the admin who approved/rejected this account. Null for profiles created before self-service sign-up existed."
+          },
+          "rejectionReason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Note the admin left when rejecting the request. Admin-facing only."
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "ISO timestamp the account was requested/created."
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "email",
+          "role",
+          "workstreamId",
+          "workstreamName",
+          "status",
+          "approvedAt",
+          "approvedBy",
+          "rejectionReason",
+          "createdAt"
+        ]
+      },
+      "ApproveUserDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "smo",
+              "workstream_lead"
+            ],
+            "description": "The role to grant on approval. Sign-up never lets someone choose their own role — this is the admin’s decision.",
+            "example": "workstream_lead"
+          },
+          "workstreamId": {
+            "type": "string",
+            "description": "Workstream to scope this user to. Required when role is workstream_lead; must be omitted (or null) for admin/smo, which are not workstream-scoped."
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
+      "RejectUserDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "Optional note on why the request was declined. Stored for the admin’s own reference — it is not shown to the applicant.",
+            "maxLength": 500
+          }
+        }
+      },
+      "UpdateUserDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "description": "Correct the user’s display name."
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "smo",
+              "workstream_lead"
+            ],
+            "description": "Change the user’s role."
+          },
+          "workstreamId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Change the workstream a lead is scoped to. Pass null to clear it (required when moving someone to admin/smo)."
+          }
+        }
+      },
+      "ResetLinkResponseDto": {
+        "type": "object",
+        "properties": {
+          "resetLink": {
+            "type": "string",
+            "description": "One-time password-recovery link to hand to the user directly. Use this when Supabase email delivery is not configured — it is generated, not emailed."
+          },
+          "email": {
+            "type": "string",
+            "example": "john.lewis@nrs.gov.ng",
+            "description": "Who the link is for."
+          }
+        },
+        "required": [
+          "resetLink",
+          "email"
+        ]
+      },
+      "NotificationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Notification id (uuid)."
+          },
+          "recipient_id": {
+            "type": "string",
+            "description": "Profile id this notification belongs to — always the caller."
+          },
+          "type": {
+            "type": "string",
+            "description": "Machine-readable kind. Currently only 'account_request' (someone signed up and is waiting for admin approval).",
+            "example": "account_request"
+          },
+          "title": {
+            "type": "string",
+            "description": "Short headline, safe to render as-is."
+          },
+          "body": {
+            "type": "string",
+            "nullable": true,
+            "description": "Longer detail line, e.g. who requested access and from which email."
+          },
+          "link": {
+            "type": "string",
+            "nullable": true,
+            "description": "In-app path the notification links to, e.g. '/users'."
+          },
+          "subject_email": {
+            "type": "string",
+            "nullable": true,
+            "description": "The email address this notification is about, where applicable. Kept even if that account is later deleted."
+          },
+          "read_at": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO timestamp the recipient read this. Null = unread."
+          },
+          "created_at": {
+            "type": "string",
+            "description": "ISO timestamp the notification was created."
+          }
+        },
+        "required": [
+          "id",
+          "recipient_id",
+          "type",
+          "title",
+          "body",
+          "link",
+          "subject_email",
+          "read_at",
+          "created_at"
         ]
       }
     }

@@ -163,3 +163,85 @@ export interface SubmitUpdateInput {
   latest_update: string;
   decisions_needed?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Accounts, approval and notifications (backend migration 005)
+// ---------------------------------------------------------------------------
+
+export type AccountStatus = 'pending' | 'approved' | 'rejected';
+
+export const ACCOUNT_STATUSES: AccountStatus[] = ['pending', 'approved', 'rejected'];
+
+/** The NRS work-email rule enforced on sign-up and password reset. */
+export const NRS_EMAIL_DOMAIN = 'nrs.gov.ng';
+
+export interface SignupInput {
+  fullName: string;
+  email: string;
+  password: string;
+}
+
+export interface SignupResponse {
+  email: string;
+  fullName: string;
+  status: AccountStatus;
+  /** Written to be shown to the user as-is. */
+  message: string;
+}
+
+export interface ForgotPasswordResponse {
+  message: string;
+}
+
+/** One row in the admin-only Users section. */
+export interface UserAccount {
+  id: string;
+  fullName: string;
+  email: string;
+  role: UserRole;
+  workstreamId: string | null;
+  workstreamName: string | null;
+  status: AccountStatus;
+  approvedAt: string | null;
+  approvedBy: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
+}
+
+export interface ApproveUserInput {
+  role: UserRole;
+  workstreamId?: string | null;
+}
+
+export interface UpdateUserInput {
+  fullName?: string;
+  role?: UserRole;
+  workstreamId?: string | null;
+}
+
+export interface UsersAccessStatus {
+  configured: boolean;
+}
+
+export interface UnlockUsersSectionResponse {
+  ticket: string;
+  /** Unix epoch milliseconds. */
+  expiresAt: number;
+}
+
+export interface ResetLinkResponse {
+  resetLink: string;
+  email: string;
+}
+
+export interface Notification {
+  id: string;
+  recipient_id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  subject_email: string | null;
+  read_at: string | null;
+  created_at: string;
+}

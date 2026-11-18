@@ -1,14 +1,29 @@
 import type { JSX } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ListChecks, Layers, Download, Presentation } from 'lucide-react';
+import { LayoutDashboard, ListChecks, Layers, Download, Presentation, Users } from 'lucide-react';
+import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
+import type { UserRole } from '@/types/api';
 
-export const NAV_ITEMS = [
+interface NavItem {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  end: boolean;
+  /** When set, only these roles see the item. Omitted = everyone signed in. */
+  roles?: UserRole[];
+}
+
+export const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/impact', label: 'Impact View', icon: Presentation, end: false },
   { to: '/workstreams', label: 'Workstreams', icon: Layers, end: false },
   { to: '/initiatives', label: 'Initiatives', icon: ListChecks, end: false },
   { to: '/exports', label: 'Exports', icon: Download, end: false },
+  // Admin-only, and additionally locked behind the Users-section access
+  // code once opened — see `UsersAccessGate`. Hidden rather than disabled
+  // for everyone else: there is nothing for them to do there.
+  { to: '/users', label: 'Users', icon: Users, end: false, roles: ['admin'] },
 ];
 
 export function PulseMark(): JSX.Element {
@@ -29,9 +44,14 @@ export function PulseMark(): JSX.Element {
 }
 
 export function NavLinks({ onNavigate }: { onNavigate?: () => void }): JSX.Element {
+  const { user } = useAuth();
+  const items = NAV_ITEMS.filter(
+    (item) => !item.roles || (user !== null && item.roles.includes(user.role)),
+  );
+
   return (
     <nav className="flex-1 space-y-0.5 px-3 py-4">
-      {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+      {items.map(({ to, label, icon: Icon, end }) => (
         <NavLink
           key={to}
           to={to}

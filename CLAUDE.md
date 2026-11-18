@@ -126,6 +126,58 @@ of the codebase:
   against until the admin approval comes through — premature SSO code is just
   another thing to maintain against a moving target.
 
+## Accounts and the Users section (built after the auth section above)
+
+The "start simple" email/password auth described above is now fleshed out
+into self-service sign-up with admin approval. `AuthService` is still the
+only seam over Supabase Auth, so the Entra ID swap story is unchanged — but
+`signUp`/`requestPasswordReset`/`resetPassword` are email/password-era
+operations that the directory will own under SSO, which is exactly why they
+live behind that interface too.
+
+Migration: `db/005_user_accounts.sql` (run after 001-004). Decisions worth
+not re-litigating:
+
+- **Only `@nrs.gov.ng` emails can sign up** (`backend/src/auth/nrs-email.ts`),
+  e.g. `john.lewis@nrs.gov.ng`. Enforced on sign-up and password reset, **not**
+  on sign-in — the profiles seeded before this rule existed must keep working.
+- **`profiles.status`** is `pending` | `approved` | `rejected`. A new sign-up
+  is `pending`: the account exists in `auth.users` but is refused at sign-in
+  *and on every token verification*, so revoking access is immediate rather
+  than waiting for a token to expire. Migration 005 backfills every existing
+  profile to `approved`.
+- **The admin sets role and workstream at approval time.** Sign-up asks for
+  name, email and password only — nobody chooses their own privileges. A lead
+  must have exactly one workstream; admin/smo must have none, and the API
+  keeps that pairing consistent on every role change.
+- **Every admin gets a `notifications` row** when someone requests access, so
+  an approval can't sit unseen. Rows are written with the service-role key;
+  RLS grants no insert policy, so a signing-up user can't forge one.
+- **`POST /auth/forgot-password` 404s for an unknown address** rather than
+  silently succeeding. Deliberate: on a closed internal tool where every
+  address is a predictable `firstname.lastname@nrs.gov.ng`, telling someone
+  "there is no account here" beats letting them wait for an email that was
+  never coming. It needs Supabase SMTP to deliver; where that isn't
+  configured, `POST /admin/users/:id/reset-link` generates a link the admin
+  hands over directly.
+- **The Users section needs three independent things**: an approved session,
+  the `admin` role, and a short-lived access-code ticket. Being able to sign
+  in to Pulse is deliberately not enough to approve or delete accounts.
+- **The access code has no "forgot" flow, on purpose.** It is scrypt-hashed
+  in `app_settings` — a table with RLS on and *no policies*, so only the
+  service-role key can touch it. Rotate it in the UI with the current code,
+  or reset it from the server with `cd backend && npm run users:set-code`.
+  Don't add a self-service reset: it would make the second lock worth as much
+  as the first.
+- **Deleting a user is a real delete** of the `auth.users` row (profiles
+  cascades), but the append-only TWG history survives:
+  `initiative_updates.submitted_by` is `on delete set null`. The API refuses
+  to delete or demote the last approved admin, or the caller's own account.
+- `src/users/` uses the service-role client throughout. That is the exception
+  CLAUDE.md warns about, taken knowingly: it has to reach `auth.users`, and
+  it has to *see* pending/rejected profiles that RLS hides even from their
+  own owner. Authorization lives in the three guards in front of it.
+
 ## Swagger UI — required, not optional
 
 Install `@nestjs/swagger` and `swagger-ui-express`. In `main.ts`:

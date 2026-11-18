@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { JSX, ReactNode } from 'react';
 import { api } from '@/lib/api';
-import { ApiError, getToken, setToken } from '@/lib/api-client';
+import { ApiError, getToken, setToken, setUsersAccessTicket } from '@/lib/api-client';
 import type { AuthUser } from '@/types/api';
 
 interface AuthContextValue {
@@ -35,6 +35,9 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   const login = useCallback(async (email: string, password: string) => {
     const res = await api.auth.login(email, password);
     setToken(res.accessToken);
+    // A ticket is bound to one admin id, so one left over from a previous
+    // session on this tab is useless — clear it rather than 403 later.
+    setUsersAccessTicket(null);
     setUser(res.user);
   }, []);
 
@@ -45,6 +48,9 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       // Best-effort — clear local state regardless of whether the server call succeeded.
     }
     setToken(null);
+    // Signing out must also drop the Users-section unlock — otherwise the
+    // next person to sign in on this tab would inherit it.
+    setUsersAccessTicket(null);
     setUser(null);
   }, []);
 
