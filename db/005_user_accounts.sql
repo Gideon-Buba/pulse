@@ -25,6 +25,13 @@
 --    `npm run users:set-code`, or by deleting the row below and setting a
 --    fresh one.
 --
+-- 4. The pre-existing "readable by authenticated" policies on workstreams,
+--    initiatives, milestones and initiative_updates now also require an
+--    approved profile (section 5 below). Without this, a pending account —
+--    or anyone hitting Supabase directly with no profiles row at all —
+--    reads every TWG initiative regardless of approval, since those four
+--    policies previously checked only "is this a valid session".
+--
 -- Run this in the Supabase SQL editor, after 001-004.
 -- ============================================================================
 
@@ -189,3 +196,58 @@ as $$
   select workstream_id from profiles
   where id = auth.uid() and status = 'approved';
 $$;
+
+-- ----------------------------------------------------------------------------
+-- 5. ENFORCE APPROVAL ON THE CORE READ POLICIES
+-- ----------------------------------------------------------------------------
+-- 001's four "readable by authenticated" policies (workstreams, initiatives,
+-- milestones, initiative_updates) check only `auth.role() = 'authenticated'`
+-- — true for ANY valid Supabase session, approved or not. The API re-checks
+-- `status` on every request, but that is not the authoritative boundary RLS
+-- is supposed to be; two concrete ways a pending/rejected (or entirely
+-- API-bypassing) account could otherwise read every TWG initiative:
+--
+--  1. `signUp()` creates the auth.users row via `admin.createUser({
+--     email_confirm: true, ... })`, which hands back a fully usable Supabase
+--     session immediately — nothing stops that pending account from calling
+--     Supabase's own REST API directly with its own JWT (the anon key is
+--     necessarily public in the frontend bundle), skipping the NestJS layer
+--     — and with it, every approval check — entirely.
+--  2. The NRS-email restriction and the pending/approved gate only exist in
+--     the NestJS DTO/service layer. Nothing stops someone calling Supabase's
+--     public `auth.signUp()` directly with no `profiles` row at all; RLS
+--     would still call them "authenticated".
+--
+-- Fix: these reads require an approved profile too, via the same
+-- SECURITY DEFINER pattern as `is_admin_or_smo()` (an inline subquery on
+-- profiles, if these were the `profiles` table itself, would recurse — not
+-- the case here, but keeping one shared helper avoids four slightly
+-- different copies of the same check).
+
+create or replace function is_approved()
+returns boolean
+language sql
+security definer
+stable
+as $$
+  select exists (
+    select 1 from profiles
+    where id = auth.uid() and status = 'approved'
+  );
+$$;
+
+drop policy if exists "workstreams readable by authenticated" on workstreams;
+create policy "workstreams readable by authenticated" on workstreams
+  for select using (is_approved());
+
+drop policy if exists "initiatives readable by authenticated" on initiatives;
+create policy "initiatives readable by authenticated" on initiatives
+  for select using (is_approved());
+
+drop policy if exists "milestones readable by authenticated" on milestones;
+create policy "milestones readable by authenticated" on milestones
+  for select using (is_approved());
+
+drop policy if exists "updates readable by authenticated" on initiative_updates;
+create policy "updates readable by authenticated" on initiative_updates
+  for select using (is_approved());
