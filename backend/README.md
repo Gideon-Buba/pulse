@@ -19,17 +19,9 @@ npm run start:dev
 
 ## Accounts: sign-up, approval, and the Users section
 
-Run `db/005_user_accounts.sql` in the Supabase SQL editor (after 001-004),
-then set the Users-section access code:
-
-```bash
-npm run users:set-code            # prompts, no echo
-npm run users:set-code -- 'code'  # or pass it directly
-```
-
-Until that code is set, the Users section stays locked and
-`POST /admin/users-access/unlock` returns 503. That is the intended
-fail-closed state, not a bug.
+Run `db/005_user_accounts.sql` in the Supabase SQL editor (after 001-004).
+Make sure at least one profile has `role = 'admin'` — only admins can open
+the Users section.
 
 How the pieces fit:
 
@@ -46,16 +38,8 @@ How the pieces fit:
   Supabase SMTP to actually deliver; where that isn't configured,
   `POST /admin/users/:id/reset-link` generates a one-time link for the admin
   to hand over directly.
-- **The Users section** needs three independent things: an approved session,
-  the `admin` role, and a live access-code ticket
-  (`POST /admin/users-access/unlock` → `x-pulse-users-access` header, 30
-  minutes). Signing in to Pulse is deliberately not enough to manage
-  accounts.
-- **There is no "forgot the access code" flow.** A self-service reset would
-  make the second lock worth as much as the first. The code is hashed
-  (scrypt) in `app_settings`, a table RLS reaches with no policy at all —
-  service-role key only. Rotate it in the UI with the current code, or reset
-  it server-side with `npm run users:set-code`.
+- **The Users section** is admin-only: an approved session plus the `admin`
+  role, both checked on every request. There is no second password.
 
 ## Layout
 
@@ -72,9 +56,7 @@ How the pieces fit:
   CLAUDE.md on the eventual Entra ID swap). `nrs-email.ts` holds the
   `@nrs.gov.ng` rule, applied to sign-up and password reset but not to
   sign-in, so profiles that predate the rule keep working.
-- `src/users/` — the admin-only Users section plus its access-code lock.
-  `users-access.crypto.ts` is shared with `scripts/set-users-access-code.ts`
-  so the hash format can't drift between the API and the CLI.
+- `src/users/` — the admin-only Users section.
 - `src/notifications/` — per-recipient feed; rows are written service-role
   side only, so nobody can forge one.
 - `src/openapi.ts` — one definition of the OpenAPI document, used by both

@@ -25,10 +25,9 @@ import { UserAccountDto } from './dto/user-account.dto';
  *  2. It has to *see* pending and rejected profiles, which RLS deliberately
  *     hides — including from their own owner.
  *
- * Authorization is enforced in front of it instead, and in three
- * independent layers: a valid approved session (`JwtAuthGuard`), the admin
- * role (`RolesGuard` + `@Roles('admin')`), and a live access-code ticket
- * (`UsersAccessGuard`).
+ * Authorization is enforced in front of it instead, in two layers:
+ * a valid approved session (`JwtAuthGuard`) and the admin role
+ * (`RolesGuard` + `@Roles('admin')`).
  */
 @Injectable()
 export class UsersService {

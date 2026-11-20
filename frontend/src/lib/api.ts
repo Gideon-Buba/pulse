@@ -17,13 +17,11 @@ import type {
   SignupInput,
   SignupResponse,
   SubmitUpdateInput,
-  UnlockUsersSectionResponse,
   UpdateInitiativeInput,
   UpdateMilestoneInput,
   UpdateUserInput,
   UpdateWorkstreamInput,
   UserAccount,
-  UsersAccessStatus,
   Workstream,
   WorkstreamSummary,
 } from '@/types/api';
@@ -62,48 +60,33 @@ export const api = {
     markAllRead: () => apiFetch<void>('/notifications/read-all', { method: 'POST' }),
   },
   /**
-   * The admin-only Users section. Every call here carries the access-code
-   * ticket in addition to the bearer token — `usersAccess: true`.
+   * The admin-only Users section (admin role enforced by the API).
    */
   users: {
-    accessStatus: () => apiFetch<UsersAccessStatus>('/admin/users-access'),
-    unlock: (accessCode: string) =>
-      apiFetch<UnlockUsersSectionResponse>('/admin/users-access/unlock', {
-        method: 'POST',
-        body: { accessCode },
-      }),
-    changeAccessCode: (currentAccessCode: string, newAccessCode: string) =>
-      apiFetch<void>('/admin/users-access/code', {
-        method: 'POST',
-        body: { currentAccessCode, newAccessCode },
-      }),
     list: (filters?: { status?: AccountStatus }) => {
       const params = new URLSearchParams();
       if (filters?.status) params.set('status', filters.status);
       const qs = params.toString();
-      return apiFetch<UserAccount[]>(`/admin/users${qs ? `?${qs}` : ''}`, { usersAccess: true });
+      return apiFetch<UserAccount[]>(`/admin/users${qs ? `?${qs}` : ''}`);
     },
     approve: (id: string, body: ApproveUserInput) =>
       apiFetch<UserAccount>(`/admin/users/${id}/approve`, {
         method: 'POST',
         body,
-        usersAccess: true,
       }),
     reject: (id: string, reason?: string) =>
       apiFetch<UserAccount>(`/admin/users/${id}/reject`, {
         method: 'POST',
         body: reason ? { reason } : {},
-        usersAccess: true,
       }),
     update: (id: string, body: UpdateUserInput) =>
-      apiFetch<UserAccount>(`/admin/users/${id}`, { method: 'PATCH', body, usersAccess: true }),
+      apiFetch<UserAccount>(`/admin/users/${id}`, { method: 'PATCH', body }),
     resetLink: (id: string) =>
       apiFetch<ResetLinkResponse>(`/admin/users/${id}/reset-link`, {
         method: 'POST',
-        usersAccess: true,
       }),
     remove: (id: string) =>
-      apiFetch<void>(`/admin/users/${id}`, { method: 'DELETE', usersAccess: true }),
+      apiFetch<void>(`/admin/users/${id}`, { method: 'DELETE' }),
   },
   workstreams: {
     list: (filters?: { includeArchived?: boolean }) => {

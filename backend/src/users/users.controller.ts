@@ -11,14 +11,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiHeader,
-  ApiOperation,
-  ApiParam,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -32,23 +25,15 @@ import {
   UpdateUserDto,
 } from './dto/manage-user.dto';
 import { UserAccountDto } from './dto/user-account.dto';
-import { USERS_ACCESS_HEADER, UsersAccessGuard } from './users-access.guard';
 import { UsersService } from './users.service';
 
 /**
- * The Users section. Every route needs all three of: an approved session,
- * the `admin` role, and a live access-code ticket — see
- * `UsersAccessService` for why the access code exists on top of the role.
+ * The Users section. Every route needs an approved session and the `admin`
+ * role. There is no extra password on top.
  */
 @ApiTags('users')
 @ApiBearerAuth()
-@ApiHeader({
-  name: USERS_ACCESS_HEADER,
-  required: true,
-  description:
-    'Users-section access ticket from POST /admin/users-access/unlock. Expires after 30 minutes, after which the access code must be entered again.',
-})
-@UseGuards(JwtAuthGuard, RolesGuard, UsersAccessGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
 @Controller('admin/users')
 export class UsersController {
@@ -63,7 +48,7 @@ export class UsersController {
   @ApiResponse({ status: 200, type: [UserAccountDto] })
   @ApiResponse({
     status: 403,
-    description: 'Caller is not an admin, or has not unlocked the Users section.',
+    description: 'Caller is not an admin.',
   })
   list(@Query() query: ListUsersQueryDto): Promise<UserAccountDto[]> {
     return this.users.list(query.status);
@@ -83,7 +68,7 @@ export class UsersController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Caller is not an admin, or has not unlocked the Users section.',
+    description: 'Caller is not an admin.',
   })
   @ApiResponse({ status: 404, description: 'No account (or no workstream) with that id.' })
   @ApiResponse({
@@ -108,7 +93,7 @@ export class UsersController {
   @ApiResponse({ status: 201, type: UserAccountDto })
   @ApiResponse({
     status: 403,
-    description: 'Caller is not an admin, or has not unlocked the Users section.',
+    description: 'Caller is not an admin.',
   })
   @ApiResponse({ status: 404, description: 'No account with that id.' })
   @ApiResponse({
@@ -137,7 +122,7 @@ export class UsersController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Caller is not an admin, or has not unlocked the Users section.',
+    description: 'Caller is not an admin.',
   })
   @ApiResponse({ status: 404, description: 'No account (or no workstream) with that id.' })
   @ApiResponse({
@@ -164,7 +149,7 @@ export class UsersController {
   @ApiResponse({ status: 201, type: ResetLinkResponseDto })
   @ApiResponse({
     status: 403,
-    description: 'Caller is not an admin, or has not unlocked the Users section.',
+    description: 'Caller is not an admin.',
   })
   @ApiResponse({ status: 404, description: 'No account with that id.' })
   @ApiResponse({ status: 409, description: 'The account is not approved yet.' })
@@ -184,7 +169,7 @@ export class UsersController {
   @ApiResponse({ status: 204, description: 'Account deleted.' })
   @ApiResponse({
     status: 403,
-    description: 'Caller is not an admin, or has not unlocked the Users section.',
+    description: 'Caller is not an admin.',
   })
   @ApiResponse({ status: 404, description: 'No account with that id.' })
   @ApiResponse({

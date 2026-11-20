@@ -1,19 +1,17 @@
-import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
+import { useMemo, useState, type JSX } from 'react';
 import { Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   Check,
   Copy,
-  KeyRound,
   Link2,
-  Lock,
   MoreVertical,
   Pencil,
   Trash2,
   UserX,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { ApiError, getUsersAccessTicket, setUsersAccessTicket } from '@/lib/api-client';
+import { ApiError } from '@/lib/api-client';
 import { useApiQuery } from '@/hooks/use-api-query';
 import { useAuth } from '@/context/auth-context';
 import { Badge } from '@/components/ui/badge';
@@ -28,11 +26,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ChangeAccessCodeDialog } from '@/components/change-access-code-dialog';
 import { ConfirmActionDialog } from '@/components/confirm-action-dialog';
 import { SectionHeading } from '@/components/section-heading';
 import { UserFormDialog } from '@/components/user-form-dialog';
-import { UsersAccessGate } from '@/components/users-access-gate';
 import { formatDate, roleLabel } from '@/lib/format';
 import type { AccountStatus, UserAccount } from '@/types/api';
 
@@ -52,40 +48,23 @@ function StatusBadge({ status }: { status: AccountStatus }): JSX.Element {
 
 export default function UsersPage(): JSX.Element {
   const { user } = useAuth();
-  // Belt and braces: the nav item is already admin-only, and all three
-  // API-side guards run regardless. This just avoids showing an admin-only
-  // page to someone who typed /users into the address bar.
-  const isAdmin = user?.role === 'admin';
+  // Belt and braces: the nav item is already admin-only, and the API
+  // enforces the admin role regardless. This just avoids showing an
+  // admin-only page to someone who typed /users into the address bar.
+  if (user?.role !== 'admin') return <Navigate to="/" replace />;
 
-  const [unlocked, setUnlocked] = useState(() => getUsersAccessTicket() !== null);
-
-  if (!isAdmin) return <Navigate to="/" replace />;
-  if (!unlocked) return <UsersAccessGate onUnlocked={() => setUnlocked(true)} />;
-
-  return <UsersPageContent onLock={() => setUnlocked(false)} />;
+  return <UsersPageContent />;
 }
 
-function UsersPageContent({ onLock }: { onLock: () => void }): JSX.Element {
+function UsersPageContent(): JSX.Element {
   const { user } = useAuth();
   const { data: users, loading, error, refetch } = useApiQuery(() => api.users.list(), []);
   const { data: workstreams } = useApiQuery(() => api.workstreams.list({ includeArchived: true }), []);
   const [resetLink, setResetLink] = useState<{ email: string; link: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
-  /** The ticket expired or was never valid — send the admin back to the gate. */
-  const relock = useCallback(() => {
-    setUsersAccessTicket(null);
-    onLock();
-  }, [onLock]);
-
   const pending = useMemo(() => users?.filter((u) => u.status === 'pending') ?? [], [users]);
   const others = useMemo(() => users?.filter((u) => u.status !== 'pending') ?? [], [users]);
-
-  // A "not unlocked" error after we thought we were unlocked means the
-  // 30-minute ticket ran out mid-session — drop it and show the gate again.
-  useEffect(() => {
-    if (error && /unlock/i.test(error)) relock();
-  }, [error, relock]);
 
   async function handleResetLink(account: UserAccount): Promise<void> {
     try {
@@ -254,25 +233,11 @@ function UsersPageContent({ onLock }: { onLock: () => void }): JSX.Element {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
         <p className="text-sm text-muted-foreground">
           Who can sign in to Pulse, and what they can see. Every new sign-up waits here until you
           approve it.
         </p>
-        <div className="flex shrink-0 items-center gap-2">
-          <ChangeAccessCodeDialog
-            trigger={
-              <Button variant="outline" size="sm">
-                <KeyRound className="h-4 w-4" />
-                Access code
-              </Button>
-            }
-          />
-          <Button variant="outline" size="sm" onClick={relock}>
-            <Lock className="h-4 w-4" />
-            Lock
-          </Button>
-        </div>
       </div>
 
       {error && (

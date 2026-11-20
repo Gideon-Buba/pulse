@@ -219,16 +219,6 @@ export interface UpdateUserInput {
   workstreamId?: string | null;
 }
 
-export interface UsersAccessStatus {
-  configured: boolean;
-}
-
-export interface UnlockUsersSectionResponse {
-  ticket: string;
-  /** Unix epoch milliseconds. */
-  expiresAt: number;
-}
-
 export interface ResetLinkResponse {
   resetLink: string;
   email: string;

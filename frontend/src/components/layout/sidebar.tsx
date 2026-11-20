@@ -20,9 +20,8 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/workstreams', label: 'Workstreams', icon: Layers, end: false },
   { to: '/initiatives', label: 'Initiatives', icon: ListChecks, end: false },
   { to: '/exports', label: 'Exports', icon: Download, end: false },
-  // Admin-only, and additionally locked behind the Users-section access
-  // code once opened — see `UsersAccessGate`. Hidden rather than disabled
-  // for everyone else: there is nothing for them to do there.
+  // Admin-only. Hidden rather than disabled for everyone else: there is
+  // nothing for them to do there.
   { to: '/users', label: 'Users', icon: Users, end: false, roles: ['admin'] },
 ];
 

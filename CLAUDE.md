@@ -160,15 +160,9 @@ not re-litigating:
   never coming. It needs Supabase SMTP to deliver; where that isn't
   configured, `POST /admin/users/:id/reset-link` generates a link the admin
   hands over directly.
-- **The Users section needs three independent things**: an approved session,
-  the `admin` role, and a short-lived access-code ticket. Being able to sign
-  in to Pulse is deliberately not enough to approve or delete accounts.
-- **The access code has no "forgot" flow, on purpose.** It is scrypt-hashed
-  in `app_settings` — a table with RLS on and *no policies*, so only the
-  service-role key can touch it. Rotate it in the UI with the current code,
-  or reset it from the server with `cd backend && npm run users:set-code`.
-  Don't add a self-service reset: it would make the second lock worth as much
-  as the first.
+- **The Users section is admin-only**: an approved session plus the `admin`
+  role, both checked on every request. There is deliberately no second
+  password on top — the only person who sees it is the admin.
 - **Deleting a user is a real delete** of the `auth.users` row (profiles
   cascades), but the append-only TWG history survives:
   `initiative_updates.submitted_by` is `on delete set null`. The API refuses
@@ -176,7 +170,7 @@ not re-litigating:
 - `src/users/` uses the service-role client throughout. That is the exception
   CLAUDE.md warns about, taken knowingly: it has to reach `auth.users`, and
   it has to *see* pending/rejected profiles that RLS hides even from their
-  own owner. Authorization lives in the three guards in front of it.
+  own owner. Authorization lives in the guards in front of it (`JwtAuthGuard`, `RolesGuard`).
 
 ## Swagger UI — required, not optional
 

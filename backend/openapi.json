@@ -1084,137 +1084,10 @@
         ]
       }
     },
-    "/admin/users-access": {
-      "get": {
-        "operationId": "UsersAccessController_status",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UsersAccessStatusDto"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Caller is not an admin."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Whether a Users-section access code has been set on this deployment. Lets the UI say \"not configured yet\" instead of silently rejecting every code typed.",
-        "tags": [
-          "users-access"
-        ]
-      }
-    },
-    "/admin/users-access/unlock": {
-      "post": {
-        "operationId": "UsersAccessController_unlock",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UnlockUsersSectionDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnlockUsersSectionResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Incorrect access code."
-          },
-          "403": {
-            "description": "Caller is not an admin."
-          },
-          "503": {
-            "description": "No access code has been configured yet — run `npm run users:set-code` in backend/."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Exchange the shared Users-section access code for a short-lived ticket (30 minutes). Send that ticket as the `x-pulse-users-access` header on every /admin/users request. This is a second factor on top of being an admin: signing in to Pulse is not enough to read or manage accounts.",
-        "tags": [
-          "users-access"
-        ]
-      }
-    },
-    "/admin/users-access/code": {
-      "post": {
-        "operationId": "UsersAccessController_changeCode",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ChangeAccessCodeDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": "Access code changed."
-          },
-          "400": {
-            "description": "The new code is shorter than 8 characters."
-          },
-          "401": {
-            "description": "The current access code is incorrect."
-          },
-          "403": {
-            "description": "Caller is not an admin."
-          },
-          "503": {
-            "description": "No access code has been configured yet."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Rotate the Users-section access code. Requires the current code — there is no \"forgot the access code\" flow by design. If it is lost, reset it server-side with `npm run users:set-code` in backend/.",
-        "tags": [
-          "users-access"
-        ]
-      }
-    },
     "/admin/users": {
       "get": {
         "operationId": "UsersController_list",
         "parameters": [
-          {
-            "name": "x-pulse-users-access",
-            "in": "header",
-            "description": "Users-section access ticket from POST /admin/users-access/unlock. Expires after 30 minutes, after which the access code must be entered again.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "status",
             "required": false,
@@ -1245,7 +1118,7 @@
             }
           },
           "403": {
-            "description": "Caller is not an admin, or has not unlocked the Users section."
+            "description": "Caller is not an admin."
           }
         },
         "security": [
@@ -1263,15 +1136,6 @@
       "post": {
         "operationId": "UsersController_approve",
         "parameters": [
-          {
-            "name": "x-pulse-users-access",
-            "in": "header",
-            "description": "Users-section access ticket from POST /admin/users-access/unlock. Expires after 30 minutes, after which the access code must be entered again.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "id",
             "required": true,
@@ -1307,7 +1171,7 @@
             "description": "role is workstream_lead but no workstreamId was given."
           },
           "403": {
-            "description": "Caller is not an admin, or has not unlocked the Users section."
+            "description": "Caller is not an admin."
           },
           "404": {
             "description": "No account (or no workstream) with that id."
@@ -1331,15 +1195,6 @@
       "post": {
         "operationId": "UsersController_reject",
         "parameters": [
-          {
-            "name": "x-pulse-users-access",
-            "in": "header",
-            "description": "Users-section access ticket from POST /admin/users-access/unlock. Expires after 30 minutes, after which the access code must be entered again.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "id",
             "required": true,
@@ -1372,7 +1227,7 @@
             }
           },
           "403": {
-            "description": "Caller is not an admin, or has not unlocked the Users section."
+            "description": "Caller is not an admin."
           },
           "404": {
             "description": "No account with that id."
@@ -1396,15 +1251,6 @@
       "patch": {
         "operationId": "UsersController_update",
         "parameters": [
-          {
-            "name": "x-pulse-users-access",
-            "in": "header",
-            "description": "Users-section access ticket from POST /admin/users-access/unlock. Expires after 30 minutes, after which the access code must be entered again.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "id",
             "required": true,
@@ -1440,7 +1286,7 @@
             "description": "Nothing to update, or a lead was left without a workstream."
           },
           "403": {
-            "description": "Caller is not an admin, or has not unlocked the Users section."
+            "description": "Caller is not an admin."
           },
           "404": {
             "description": "No account (or no workstream) with that id."
@@ -1463,15 +1309,6 @@
         "operationId": "UsersController_remove",
         "parameters": [
           {
-            "name": "x-pulse-users-access",
-            "in": "header",
-            "description": "Users-section access ticket from POST /admin/users-access/unlock. Expires after 30 minutes, after which the access code must be entered again.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "id",
             "required": true,
             "in": "path",
@@ -1486,7 +1323,7 @@
             "description": "Account deleted."
           },
           "403": {
-            "description": "Caller is not an admin, or has not unlocked the Users section."
+            "description": "Caller is not an admin."
           },
           "404": {
             "description": "No account with that id."
@@ -1511,15 +1348,6 @@
         "operationId": "UsersController_resetLink",
         "parameters": [
           {
-            "name": "x-pulse-users-access",
-            "in": "header",
-            "description": "Users-section access ticket from POST /admin/users-access/unlock. Expires after 30 minutes, after which the access code must be entered again.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "id",
             "required": true,
             "in": "path",
@@ -1541,7 +1369,7 @@
             }
           },
           "403": {
-            "description": "Caller is not an admin, or has not unlocked the Users section."
+            "description": "Caller is not an admin."
           },
           "404": {
             "description": "No account with that id."
@@ -2480,65 +2308,6 @@
           "meeting_date",
           "status",
           "latest_update"
-        ]
-      },
-      "UsersAccessStatusDto": {
-        "type": "object",
-        "properties": {
-          "configured": {
-            "type": "boolean",
-            "description": "False when no access code has been set on this deployment yet — the Users section stays locked until an admin runs `npm run users:set-code` in backend/."
-          }
-        },
-        "required": [
-          "configured"
-        ]
-      },
-      "UnlockUsersSectionDto": {
-        "type": "object",
-        "properties": {
-          "accessCode": {
-            "type": "string",
-            "description": "The shared Users-section access code. Not the admin’s own login password."
-          }
-        },
-        "required": [
-          "accessCode"
-        ]
-      },
-      "UnlockUsersSectionResponseDto": {
-        "type": "object",
-        "properties": {
-          "ticket": {
-            "type": "string",
-            "description": "Short-lived ticket. Send it as the `x-pulse-users-access` header on every /admin/users request. Bound to this admin — useless with another account’s token."
-          },
-          "expiresAt": {
-            "type": "number",
-            "description": "Unix epoch milliseconds the ticket expires, after which the code must be re-entered."
-          }
-        },
-        "required": [
-          "ticket",
-          "expiresAt"
-        ]
-      },
-      "ChangeAccessCodeDto": {
-        "type": "object",
-        "properties": {
-          "currentAccessCode": {
-            "type": "string",
-            "description": "The access code currently in force."
-          },
-          "newAccessCode": {
-            "type": "string",
-            "description": "The new access code, at least 8 characters.",
-            "minLength": 8
-          }
-        },
-        "required": [
-          "currentAccessCode",
-          "newAccessCode"
         ]
       },
       "UserAccountDto": {

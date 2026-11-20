@@ -12,7 +12,6 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,test,scripts}/**/*.ts\" --fix",
-    "users:set-code": "ts-node -P tsconfig.json scripts/set-users-access-code.ts",
     "openapi": "ts-node -P tsconfig.json scripts/generate-openapi.ts",
     "test": "jest",
     "test:watch": "jest --watch",

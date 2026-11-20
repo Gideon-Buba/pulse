@@ -1,6 +1,6 @@
 -- ============================================================================
 -- 005: Self-service sign-up with admin approval, admin notifications,
---      and the gated Users section
+--      and the admin-only Users section
 -- ============================================================================
 -- Why a new migration instead of editing 001-004: those already ran against
 -- the live, reconciled TWG data. Editing them in place would silently
@@ -17,13 +17,6 @@
 -- 2. notifications — so a new sign-up reaches the admin even if they aren't
 --    looking at the Users page. Rows are written server-side with the
 --    service-role key (one row per admin), never by the signing-up user.
---
--- 3. app_settings — holds the hashed Users-section access code. Deliberately
---    NOT reachable by any RLS policy: service-role only. There is no
---    self-service "forgot the access code" flow by design (see CLAUDE.md
---    note / backend README) — it is reset from the backend with
---    `npm run users:set-code`, or by deleting the row below and setting a
---    fresh one.
 --
 -- Run this in the Supabase SQL editor, after 001-004.
 -- ============================================================================
@@ -132,31 +125,7 @@ create policy "notifications deletable by recipient" on notifications
 -- key, which bypasses RLS. A signing-up user must not be able to forge one.
 
 -- ----------------------------------------------------------------------------
--- 3. APP_SETTINGS (service-role only — holds the Users-section access code)
--- ----------------------------------------------------------------------------
-
-create table app_settings (
-  key         text primary key,
-  value       text not null,
-  updated_at  timestamptz not null default now(),
-  updated_by  uuid references profiles (id) on delete set null
-);
-
-comment on table app_settings is 'Server-only key/value settings. RLS is enabled with NO policies, so only the service-role key can read or write — this table holds the hashed Users-section access code and must never be reachable from a user JWT.';
-comment on column app_settings.value is 'For key=''users_section_access_code'': a scrypt hash in the form scrypt$<N>$<salt-hex>$<hash-hex>. Never a plaintext code. Set it with `npm run users:set-code` in backend/.';
-
-alter table app_settings enable row level security;
--- Intentionally no policies. Service-role key only.
-
--- NOTE: no access-code row is seeded here on purpose. A hash has to be
--- computed by the API's scrypt parameters, and seeding a known default
--- would be a credential in version control. Until an admin runs
---     cd backend && npm run users:set-code
--- the Users section fails closed: the unlock endpoint returns 503 with a
--- message saying the code has not been configured yet.
-
--- ----------------------------------------------------------------------------
--- 4. KEEP THE RLS HELPERS IN STEP WITH THE APPROVAL GATE
+-- 3. KEEP THE RLS HELPERS IN STEP WITH THE APPROVAL GATE
 -- ----------------------------------------------------------------------------
 -- The API refuses a pending/rejected account at sign-in and on every token
 -- verification, so in practice such an account never holds a usable session.

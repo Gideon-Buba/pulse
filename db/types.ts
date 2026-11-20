@@ -66,14 +66,6 @@ export type Notification = {
   created_at: string;
 };
 
-/** Server-only key/value settings. RLS-locked to the service-role key. */
-export type AppSetting = {
-  key: string;
-  value: string;
-  updated_at: string;
-  updated_by: string | null;
-};
-
 export type Initiative = {
   id: string;
   workstream_id: string;
@@ -182,15 +174,6 @@ export type Database = {
           read_at?: string | null;
         };
         Update: Partial<Omit<Notification, "id" | "created_at">>;
-        Relationships: [];
-      };
-      app_settings: {
-        Row: AppSetting;
-        Insert: Omit<AppSetting, "updated_at" | "updated_by"> & {
-          updated_at?: string;
-          updated_by?: string | null;
-        };
-        Update: Partial<Omit<AppSetting, "key">>;
         Relationships: [];
       };
       initiatives: {

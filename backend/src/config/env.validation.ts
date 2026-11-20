@@ -5,14 +5,6 @@ export interface EnvConfig {
   SUPABASE_SERVICE_ROLE_KEY: string;
   /** Comma-separated allowed CORS origin(s) for the deployed frontend. Unset in local dev — CORS stays permissive then. */
   FRONTEND_URL: string | null;
-  /**
-   * Optional signing secret for Users-section access tickets. Left unset,
-   * the key is derived from SUPABASE_SERVICE_ROLE_KEY — set it explicitly
-   * if you ever rotate that key and don't want live tickets to survive (or
-   * vice versa). Note: changing this invalidates every issued ticket, which
-   * just means admins re-enter the access code.
-   */
-  USERS_SECTION_TICKET_SECRET: string | null;
 }
 
 const REQUIRED_KEYS: Array<keyof EnvConfig> = [
@@ -44,11 +36,6 @@ export function validateEnv(config: Record<string, unknown>): EnvConfig {
     FRONTEND_URL:
       typeof config.FRONTEND_URL === 'string' && config.FRONTEND_URL.length > 0
         ? config.FRONTEND_URL
-        : null,
-    USERS_SECTION_TICKET_SECRET:
-      typeof config.USERS_SECTION_TICKET_SECRET === 'string' &&
-      config.USERS_SECTION_TICKET_SECRET.length > 0
-        ? config.USERS_SECTION_TICKET_SECRET
         : null,
   };
 }
