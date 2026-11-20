@@ -984,7 +984,7 @@
             "bearer": []
           }
         ],
-        "summary": "Admin/SMO-only: permanently delete a milestone. Unlike initiatives/workstreams this is a hard delete — a milestone carries no history of its own.",
+        "summary": "Admin/SMO-only: permanently delete a milestone. Unlike initiatives/workstreams this is a hard delete. Past update entries that reported on it are kept (with the milestone title as it was then) but are no longer linked to a milestone.",
         "tags": [
           "milestones"
         ]
@@ -1027,7 +1027,7 @@
             "bearer": []
           }
         ],
-        "summary": "List the fortnightly update history for an initiative, newest first. The full audit trail is readable by everyone authenticated.",
+        "summary": "List the fortnightly update history for an initiative, newest TWG meeting first. Each update includes who submitted it, the status it moved from, and the milestones the lead reported on. The full audit trail is readable by everyone authenticated.",
         "tags": [
           "updates"
         ]
@@ -1066,6 +1066,9 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid body: e.g. a milestone that is not under this initiative, the same milestone listed twice, or more than one milestone flagged is_current."
+          },
           "403": {
             "description": "Caller is a workstream_lead submitting for an initiative outside their workstream."
           },
@@ -1078,9 +1081,132 @@
             "bearer": []
           }
         ],
-        "summary": "Submit a fortnightly update for an initiative. This is the append-only path leads use instead of editing the initiative directly — a trigger promotes the newest submission onto the initiative snapshot.",
+        "summary": "Submit a fortnightly update for an initiative, optionally with per-milestone detail (the current milestone plus any others reported on). This is the append-only path leads use instead of editing the initiative directly — triggers promote the newest submission onto the initiative and milestone snapshots. The update and its milestone entries are saved together or not at all.",
         "tags": [
           "updates"
+        ]
+      }
+    },
+    "/initiatives/{initiativeId}/milestones/{milestoneId}/history": {
+      "get": {
+        "operationId": "MilestoneHistoryController_findAll",
+        "parameters": [
+          {
+            "name": "initiativeId",
+            "required": true,
+            "in": "path",
+            "description": "Parent initiative id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "milestoneId",
+            "required": true,
+            "in": "path",
+            "description": "Milestone id (uuid).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MilestoneHistoryEntryDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No milestone with that id under this initiative."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Show how one milestone has progressed across TWG meetings: every update that reported on it, newest first, with the status it moved from and to, the note, and who submitted it.",
+        "tags": [
+          "milestones"
+        ]
+      }
+    },
+    "/meetings": {
+      "get": {
+        "operationId": "MeetingsController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MeetingSummaryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List every TWG meeting date that has updates filed against it, newest first, with how many initiatives were updated.",
+        "tags": [
+          "meetings"
+        ]
+      }
+    },
+    "/meetings/{date}": {
+      "get": {
+        "operationId": "MeetingsController_findOne",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "description": "TWG meeting date, YYYY-MM-DD.",
+            "schema": {
+              "example": "2026-08-18",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingDetailDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Date is not in YYYY-MM-DD format."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Everything filed for one TWG meeting, grouped by workstream like the deck. Every active initiative is listed, so initiatives with no update for this meeting show up as gaps.",
+        "tags": [
+          "meetings"
         ]
       }
     },
@@ -2383,6 +2509,102 @@
           }
         }
       },
+      "SubmitterDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Profile id (uuid)."
+          },
+          "full_name": {
+            "type": "string",
+            "description": "Display name of the submitter."
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "smo",
+              "workstream_lead"
+            ],
+            "description": "Submitter's role at the time of reading."
+          }
+        },
+        "required": [
+          "id",
+          "full_name",
+          "role"
+        ]
+      },
+      "UpdateMilestoneEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Entry id (uuid)."
+          },
+          "update_id": {
+            "type": "string",
+            "description": "The update this entry belongs to."
+          },
+          "milestone_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Milestone id (uuid). Null if the milestone has since been deleted."
+          },
+          "milestone_title": {
+            "type": "string",
+            "description": "Milestone title as it was when the update was submitted (survives later renames/deletes)."
+          },
+          "is_current": {
+            "type": "boolean",
+            "description": "True if the lead flagged this as the milestone the initiative is currently on."
+          },
+          "previous_status": {
+            "type": "string",
+            "enum": [
+              "Not started",
+              "In progress",
+              "Completed",
+              "Delayed/at risk"
+            ],
+            "nullable": true,
+            "description": "Milestone status immediately before this entry was applied."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Not started",
+              "In progress",
+              "Completed",
+              "Delayed/at risk"
+            ],
+            "description": "Milestone status reported in this entry."
+          },
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "description": "Progress note on this milestone."
+          },
+          "challenges": {
+            "type": "string",
+            "nullable": true,
+            "description": "Challenges reported on this milestone."
+          },
+          "created_at": {
+            "type": "string",
+            "description": "ISO timestamp this entry was submitted."
+          }
+        },
+        "required": [
+          "id",
+          "update_id",
+          "milestone_title",
+          "is_current",
+          "status",
+          "created_at"
+        ]
+      },
       "InitiativeUpdateDto": {
         "type": "object",
         "properties": {
@@ -2397,7 +2619,17 @@
           "submitted_by": {
             "type": "string",
             "nullable": true,
-            "description": "Profile id of whoever submitted this."
+            "description": "Profile id of whoever submitted this. Null for seeded/imported history."
+          },
+          "submitter": {
+            "nullable": true,
+            "description": "Name and role of the submitter. Null for seeded/imported history.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SubmitterDto"
+              }
+            ]
           },
           "meeting_date": {
             "type": "string",
@@ -2410,15 +2642,29 @@
               "In progress",
               "Completed",
               "Delayed/at risk"
-            ]
+            ],
+            "description": "Initiative RAG status reported in this update."
+          },
+          "previous_status": {
+            "type": "string",
+            "enum": [
+              "Not started",
+              "In progress",
+              "Completed",
+              "Delayed/at risk"
+            ],
+            "nullable": true,
+            "description": "Initiative status in the previous update (by meeting date). Null for the first update on record. Compare with `status` to show a transition."
           },
           "target": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "Target narrative. Null means \"unchanged from before\", not \"cleared\"."
           },
           "actual": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "Actual-progress narrative. Null means \"unchanged from before\", not \"cleared\"."
           },
           "latest_update": {
             "type": "string",
@@ -2426,7 +2672,15 @@
           },
           "decisions_needed": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "Decision the TWG needs to make, if any."
+          },
+          "milestones": {
+            "description": "Milestones reported on in this update — the current milestone (is_current) first. Empty for updates submitted before milestone-level reporting existed.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UpdateMilestoneEntryDto"
+            }
           },
           "created_at": {
             "type": "string",
@@ -2439,7 +2693,44 @@
           "meeting_date",
           "status",
           "latest_update",
+          "milestones",
           "created_at"
+        ]
+      },
+      "SubmitMilestoneEntryDto": {
+        "type": "object",
+        "properties": {
+          "milestone_id": {
+            "type": "string",
+            "description": "Milestone id (uuid). Must belong to the initiative being updated."
+          },
+          "is_current": {
+            "type": "boolean",
+            "description": "True for the milestone the initiative is currently on. At most one entry per submission may set this. Defaults to false.",
+            "default": false
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Not started",
+              "In progress",
+              "Completed",
+              "Delayed/at risk"
+            ],
+            "description": "Milestone RAG status as of this update. Becomes the milestone's current status."
+          },
+          "note": {
+            "type": "string",
+            "description": "Progress note on this milestone since the last TWG."
+          },
+          "challenges": {
+            "type": "string",
+            "description": "Challenges on this milestone. If given, replaces the milestone's current challenges text; if omitted, the existing text is kept."
+          }
+        },
+        "required": [
+          "milestone_id",
+          "status"
         ]
       },
       "SubmitUpdateDto": {
@@ -2474,12 +2765,228 @@
           "decisions_needed": {
             "type": "string",
             "description": "Any decision the TWG needs to make on this initiative."
+          },
+          "milestones": {
+            "description": "Per-milestone detail: the milestone the initiative is currently on (flag it with is_current) plus any other milestones being reported on. Each milestone may appear once. Saved atomically with the update — if any entry is invalid, nothing is saved.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubmitMilestoneEntryDto"
+            }
           }
         },
         "required": [
           "meeting_date",
           "status",
           "latest_update"
+        ]
+      },
+      "MilestoneHistoryEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Entry id (uuid)."
+          },
+          "update_id": {
+            "type": "string",
+            "description": "The update this entry belongs to."
+          },
+          "milestone_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Milestone id (uuid). Null if the milestone has since been deleted."
+          },
+          "milestone_title": {
+            "type": "string",
+            "description": "Milestone title as it was when the update was submitted (survives later renames/deletes)."
+          },
+          "is_current": {
+            "type": "boolean",
+            "description": "True if the lead flagged this as the milestone the initiative is currently on."
+          },
+          "previous_status": {
+            "type": "string",
+            "enum": [
+              "Not started",
+              "In progress",
+              "Completed",
+              "Delayed/at risk"
+            ],
+            "nullable": true,
+            "description": "Milestone status immediately before this entry was applied."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Not started",
+              "In progress",
+              "Completed",
+              "Delayed/at risk"
+            ],
+            "description": "Milestone status reported in this entry."
+          },
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "description": "Progress note on this milestone."
+          },
+          "challenges": {
+            "type": "string",
+            "nullable": true,
+            "description": "Challenges reported on this milestone."
+          },
+          "created_at": {
+            "type": "string",
+            "description": "ISO timestamp this entry was submitted."
+          },
+          "meeting_date": {
+            "type": "string",
+            "description": "The TWG meeting date (YYYY-MM-DD) of the update this entry was part of."
+          },
+          "submitter": {
+            "nullable": true,
+            "description": "Who submitted the update this entry was part of.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SubmitterDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "update_id",
+          "milestone_title",
+          "is_current",
+          "status",
+          "created_at",
+          "meeting_date"
+        ]
+      },
+      "MeetingSummaryDto": {
+        "type": "object",
+        "properties": {
+          "meeting_date": {
+            "type": "string",
+            "description": "TWG meeting date (YYYY-MM-DD)."
+          },
+          "initiatives_updated": {
+            "type": "number",
+            "description": "Number of distinct initiatives with an update for this meeting."
+          },
+          "update_count": {
+            "type": "number",
+            "description": "Total update rows filed for this meeting (including resubmissions)."
+          }
+        },
+        "required": [
+          "meeting_date",
+          "initiatives_updated",
+          "update_count"
+        ]
+      },
+      "MeetingInitiativeDto": {
+        "type": "object",
+        "properties": {
+          "initiative_id": {
+            "type": "string",
+            "description": "Initiative id (uuid)."
+          },
+          "title": {
+            "type": "string",
+            "description": "Initiative title."
+          },
+          "current_status": {
+            "type": "string",
+            "enum": [
+              "Not started",
+              "In progress",
+              "Completed",
+              "Delayed/at risk"
+            ],
+            "description": "The initiative's status today (not at the meeting)."
+          },
+          "update": {
+            "nullable": true,
+            "description": "The update filed for this meeting. If more than one was filed, the latest submission (the one the snapshot used). Null if nothing was submitted for this meeting.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InitiativeUpdateDto"
+              }
+            ]
+          },
+          "submission_count": {
+            "type": "number",
+            "description": "How many updates were filed for this initiative for this meeting (>1 means resubmitted)."
+          }
+        },
+        "required": [
+          "initiative_id",
+          "title",
+          "current_status",
+          "submission_count"
+        ]
+      },
+      "MeetingWorkstreamDto": {
+        "type": "object",
+        "properties": {
+          "workstream_id": {
+            "type": "string",
+            "description": "Workstream id (uuid)."
+          },
+          "workstream_name": {
+            "type": "string",
+            "description": "Workstream name."
+          },
+          "submitted_count": {
+            "type": "number",
+            "description": "Active initiatives in this workstream with an update for this meeting."
+          },
+          "initiatives": {
+            "description": "Every active initiative in the workstream.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeetingInitiativeDto"
+            }
+          }
+        },
+        "required": [
+          "workstream_id",
+          "workstream_name",
+          "submitted_count",
+          "initiatives"
+        ]
+      },
+      "MeetingDetailDto": {
+        "type": "object",
+        "properties": {
+          "meeting_date": {
+            "type": "string",
+            "description": "TWG meeting date (YYYY-MM-DD)."
+          },
+          "total_initiatives": {
+            "type": "number",
+            "description": "Active (non-archived) initiatives — the denominator for submission coverage. Based on today's initiative list, so initiatives added after this meeting are counted too."
+          },
+          "submitted_count": {
+            "type": "number",
+            "description": "Active initiatives with at least one update for this meeting."
+          },
+          "workstreams": {
+            "description": "Active workstreams in display order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeetingWorkstreamDto"
+            }
+          }
+        },
+        "required": [
+          "meeting_date",
+          "total_initiatives",
+          "submitted_count",
+          "workstreams"
         ]
       },
       "UsersAccessStatusDto": {

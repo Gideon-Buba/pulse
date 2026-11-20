@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { ArrowLeft, MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, History, MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useApiQuery } from '@/hooks/use-api-query';
 import { useAuth } from '@/context/auth-context';
@@ -9,6 +9,8 @@ import { SubmitUpdateDialog } from '@/components/submit-update-dialog';
 import { EditInitiativeDialog } from '@/components/edit-initiative-dialog';
 import { MilestoneFormDialog } from '@/components/milestone-form-dialog';
 import { ConfirmActionDialog } from '@/components/confirm-action-dialog';
+import { MilestoneHistoryDialog } from '@/components/milestone-history-dialog';
+import { UpdateTimeline } from '@/components/update-timeline';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,7 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { formatDate, formatDateTime } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 
 function Field({ label, value }: { label: string; value: string | null }): JSX.Element {
   return (
@@ -96,6 +98,8 @@ export default function InitiativeDetailPage(): JSX.Element {
   function handleChanged(): void {
     refetchInitiative();
     refetchUpdates();
+    // Milestone statuses move with each submission (005 trigger).
+    refetchMilestones();
   }
 
   return (
@@ -123,7 +127,9 @@ export default function InitiativeDetailPage(): JSX.Element {
 
         <div className="flex shrink-0 gap-2">
           {canManage && <EditInitiativeDialog initiative={initiative} onSaved={handleChanged} />}
-          {canSubmitUpdate && <SubmitUpdateDialog initiative={initiative} onSubmitted={handleChanged} />}
+          {canSubmitUpdate && (
+            <SubmitUpdateDialog initiative={initiative} milestones={milestones ?? []} onSubmitted={handleChanged} />
+          )}
         </div>
       </div>
 
@@ -172,6 +178,7 @@ export default function InitiativeDetailPage(): JSX.Element {
                 <TableHead>Status</TableHead>
                 <TableHead>Challenges</TableHead>
                 <TableHead>Upcoming</TableHead>
+                <TableHead className="w-10" />
                 {canManage && <TableHead className="w-10" />}
               </TableRow>
             </TableHeader>
@@ -179,14 +186,14 @@ export default function InitiativeDetailPage(): JSX.Element {
               {loadingMilestones &&
                 Array.from({ length: 3 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={canManage ? 7 : 6}>
+                    <TableCell colSpan={canManage ? 8 : 7}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
                   </TableRow>
                 ))}
               {!loadingMilestones && milestones?.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={canManage ? 7 : 6} className="py-8 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={canManage ? 8 : 7} className="py-8 text-center text-sm text-muted-foreground">
                     No milestones recorded for this initiative.
                   </TableCell>
                 </TableRow>
@@ -204,6 +211,18 @@ export default function InitiativeDetailPage(): JSX.Element {
                     </TableCell>
                     <TableCell className="max-w-xs text-muted-foreground">{m.challenges ?? '—'}</TableCell>
                     <TableCell className="max-w-xs text-muted-foreground">{m.upcoming_milestone ?? '—'}</TableCell>
+                    <TableCell>
+                      <MilestoneHistoryDialog
+                        initiativeId={id}
+                        milestoneId={m.id}
+                        title={m.title}
+                        trigger={
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Milestone history">
+                            <History className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
+                    </TableCell>
                     {canManage && (
                       <TableCell>
                         <DropdownMenu>
@@ -266,32 +285,9 @@ export default function InitiativeDetailPage(): JSX.Element {
             </div>
           )}
 
-          {!loadingUpdates &&
-            updates?.map((u) => (
-              <div key={u.id} className="rounded-lg border border-border bg-card p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-foreground">
-                      TWG meeting {formatDate(u.meeting_date)}
-                    </span>
-                    <RagBadge status={u.status} />
-                  </div>
-                  <span className="text-xs text-muted-foreground">Submitted {formatDateTime(u.created_at)}</span>
-                </div>
-                <p className="mt-2 text-sm text-foreground">{u.latest_update}</p>
-                {(u.target || u.actual) && (
-                  <div className="mt-2 flex gap-6 text-xs text-muted-foreground">
-                    {u.target && <span>Target: {u.target}</span>}
-                    {u.actual && <span>Actual: {u.actual}</span>}
-                  </div>
-                )}
-                {u.decisions_needed && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    <span className="font-medium">Decisions needed:</span> {u.decisions_needed}
-                  </p>
-                )}
-              </div>
-            ))}
+          {!loadingUpdates && updates && updates.length > 0 && (
+            <UpdateTimeline updates={updates} initiativeId={id} />
+          )}
         </TabsContent>
       </Tabs>
     </div>

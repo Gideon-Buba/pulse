@@ -142,17 +142,52 @@ export interface UpdateMilestoneInput {
   sequence?: number;
 }
 
+export interface Submitter {
+  id: string;
+  full_name: string;
+  role: UserRole;
+}
+
+/** One milestone reported on within an update. */
+export interface UpdateMilestoneEntry {
+  id: string;
+  update_id: string;
+  /** Null once the milestone itself has been deleted. */
+  milestone_id: string | null;
+  /** Title as it was when the update was submitted. */
+  milestone_title: string;
+  is_current: boolean;
+  previous_status: RagStatus | null;
+  status: RagStatus;
+  note: string | null;
+  challenges: string | null;
+  created_at: string;
+}
+
 export interface InitiativeUpdate {
   id: string;
   initiative_id: string;
   submitted_by: string | null;
+  submitter: Submitter | null;
   meeting_date: string;
   status: RagStatus;
+  previous_status: RagStatus | null;
+  /** Null means "unchanged from before", not "cleared". */
   target: string | null;
+  /** Null means "unchanged from before", not "cleared". */
   actual: string | null;
   latest_update: string;
   decisions_needed: string | null;
+  milestones: UpdateMilestoneEntry[];
   created_at: string;
+}
+
+export interface SubmitMilestoneEntryInput {
+  milestone_id: string;
+  is_current?: boolean;
+  status: RagStatus;
+  note?: string;
+  challenges?: string;
 }
 
 export interface SubmitUpdateInput {
@@ -162,6 +197,40 @@ export interface SubmitUpdateInput {
   actual?: string;
   latest_update: string;
   decisions_needed?: string;
+  milestones?: SubmitMilestoneEntryInput[];
+}
+
+export interface MilestoneHistoryEntry extends UpdateMilestoneEntry {
+  meeting_date: string;
+  submitter: Submitter | null;
+}
+
+export interface MeetingSummary {
+  meeting_date: string;
+  initiatives_updated: number;
+  update_count: number;
+}
+
+export interface MeetingInitiative {
+  initiative_id: string;
+  title: string;
+  current_status: RagStatus;
+  update: InitiativeUpdate | null;
+  submission_count: number;
+}
+
+export interface MeetingWorkstream {
+  workstream_id: string;
+  workstream_name: string;
+  submitted_count: number;
+  initiatives: MeetingInitiative[];
+}
+
+export interface MeetingDetail {
+  meeting_date: string;
+  total_initiatives: number;
+  submitted_count: number;
+  workstreams: MeetingWorkstream[];
 }
 
 // ---------------------------------------------------------------------------

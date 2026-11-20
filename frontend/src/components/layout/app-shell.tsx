@@ -9,6 +9,7 @@ function getTitle(pathname: string): string {
   if (pathname.startsWith('/impact')) return 'Impact View';
   if (pathname.startsWith('/workstreams')) return 'Workstreams';
   if (pathname.startsWith('/initiatives')) return 'Initiatives';
+  if (pathname.startsWith('/meetings')) return 'TWG Meetings';
   if (pathname.startsWith('/exports')) return 'Exports';
   if (pathname.startsWith('/users')) return 'Users';
   return 'Pulse';

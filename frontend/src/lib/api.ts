@@ -10,8 +10,11 @@ import type {
   Initiative,
   InitiativeUpdate,
   LoginResponse,
+  MeetingDetail,
+  MeetingSummary,
   Milestone,
   Notification,
+  MilestoneHistoryEntry,
   RagStatus,
   ResetLinkResponse,
   SignupInput,
@@ -147,11 +150,17 @@ export const api = {
       apiFetch<Milestone>(`/initiatives/${initiativeId}/milestones/${id}`, { method: 'PATCH', body }),
     remove: (initiativeId: string, id: string) =>
       apiFetch<void>(`/initiatives/${initiativeId}/milestones/${id}`, { method: 'DELETE' }),
+    history: (initiativeId: string, id: string) =>
+      apiFetch<MilestoneHistoryEntry[]>(`/initiatives/${initiativeId}/milestones/${id}/history`),
   },
   updates: {
     listForInitiative: (initiativeId: string) =>
       apiFetch<InitiativeUpdate[]>(`/initiatives/${initiativeId}/updates`),
     submit: (initiativeId: string, body: SubmitUpdateInput) =>
       apiFetch<InitiativeUpdate>(`/initiatives/${initiativeId}/updates`, { method: 'POST', body }),
+  },
+  meetings: {
+    list: () => apiFetch<MeetingSummary[]>('/meetings'),
+    get: (date: string) => apiFetch<MeetingDetail>(`/meetings/${date}`),
   },
 };

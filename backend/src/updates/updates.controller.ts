@@ -1,8 +1,6 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AccessToken } from '../auth/access-token.decorator';
-import { AuthenticatedUser } from '../auth/auth.types';
-import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { InitiativeUpdateDto } from './dto/initiative-update.dto';
 import { SubmitUpdateDto } from './dto/submit-update.dto';
@@ -19,8 +17,9 @@ export class UpdatesController {
   @Get()
   @ApiOperation({
     summary:
-      'List the fortnightly update history for an initiative, newest first. The full audit ' +
-      'trail is readable by everyone authenticated.',
+      'List the fortnightly update history for an initiative, newest TWG meeting first. Each ' +
+      'update includes who submitted it, the status it moved from, and the milestones the lead ' +
+      'reported on. The full audit trail is readable by everyone authenticated.',
   })
   @ApiParam({ name: 'id', description: 'Initiative id (uuid).' })
   @ApiResponse({ status: 200, type: [InitiativeUpdateDto] })
@@ -33,12 +32,20 @@ export class UpdatesController {
   @UseGuards(WorkstreamScopeGuard)
   @ApiOperation({
     summary:
-      'Submit a fortnightly update for an initiative. This is the append-only path leads use ' +
-      'instead of editing the initiative directly — a trigger promotes the newest submission ' +
-      'onto the initiative snapshot.',
+      'Submit a fortnightly update for an initiative, optionally with per-milestone detail ' +
+      '(the current milestone plus any others reported on). This is the append-only path leads ' +
+      'use instead of editing the initiative directly — triggers promote the newest submission ' +
+      'onto the initiative and milestone snapshots. The update and its milestone entries are ' +
+      'saved together or not at all.',
   })
   @ApiParam({ name: 'id', description: 'Initiative id (uuid).' })
   @ApiResponse({ status: 201, type: InitiativeUpdateDto })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Invalid body: e.g. a milestone that is not under this initiative, the same milestone ' +
+      'listed twice, or more than one milestone flagged is_current.',
+  })
   @ApiResponse({
     status: 403,
     description:
@@ -47,10 +54,9 @@ export class UpdatesController {
   @ApiResponse({ status: 404, description: 'No initiative with that id.' })
   submit(
     @AccessToken() token: string,
-    @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
     @Body() dto: SubmitUpdateDto,
   ): Promise<InitiativeUpdateDto> {
-    return this.updatesService.submit(token, user, id, dto);
+    return this.updatesService.submit(token, id, dto);
   }
 }

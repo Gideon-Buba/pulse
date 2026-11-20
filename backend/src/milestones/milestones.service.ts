@@ -93,9 +93,9 @@ export class MilestonesService {
   }
 
   /**
-   * Hard delete. Unlike initiatives/workstreams, a milestone carries no
-   * history of its own (no append-only log hangs off it) — nothing is lost
-   * by actually removing the row.
+   * Hard delete. Update entries that reported on this milestone survive it:
+   * `initiative_update_milestones.milestone_id` is ON DELETE SET NULL and
+   * the title was snapshotted at submission (006_update_milestones.sql).
    */
   async remove(accessToken: string, initiativeId: string, id: string): Promise<void> {
     const { data, error } = await this.supabase

@@ -82,7 +82,8 @@ export class MilestonesController {
   @ApiOperation({
     summary:
       'Admin/SMO-only: permanently delete a milestone. Unlike initiatives/workstreams this is ' +
-      'a hard delete — a milestone carries no history of its own.',
+      'a hard delete. Past update entries that reported on it are kept (with the milestone ' +
+      'title as it was then) but are no longer linked to a milestone.',
   })
   @ApiParam({ name: 'initiativeId', description: 'Parent initiative id (uuid).' })
   @ApiParam({ name: 'id', description: 'Milestone id (uuid).' })

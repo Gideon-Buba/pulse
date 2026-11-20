@@ -15,6 +15,7 @@ import InitiativeDetailPage from '@/pages/initiative-detail-page';
 import ExportsPage from '@/pages/exports-page';
 import ImpactViewPage from '@/pages/impact-view-page';
 import UsersPage from '@/pages/users-page';
+import MeetingsPage from '@/pages/meetings-page';
 
 export default function App(): JSX.Element {
   return (
@@ -38,6 +39,7 @@ export default function App(): JSX.Element {
             <Route path="/workstreams" element={<WorkstreamsPage />} />
             <Route path="/initiatives" element={<InitiativesListPage />} />
             <Route path="/initiatives/:id" element={<InitiativeDetailPage />} />
+            <Route path="/meetings" element={<MeetingsPage />} />
             <Route path="/exports" element={<ExportsPage />} />
             <Route path="/users" element={<UsersPage />} />
           </Route>

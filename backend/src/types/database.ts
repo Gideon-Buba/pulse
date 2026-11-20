@@ -121,6 +121,30 @@ export type InitiativeUpdate = {
   created_at: string;
 };
 
+/**
+ * One milestone a lead reported on as part of an `initiative_updates`
+ * submission (006_update_milestones.sql). Append-only.
+ */
+export type InitiativeUpdateMilestone = {
+  id: string;
+  update_id: string;
+  milestone_id: string | null; // null once the milestone itself is deleted
+  milestone_title: string; // snapshot at submission time
+  is_current: boolean;
+  previous_status: RagStatus | null;
+  status: RagStatus;
+  note: string | null;
+  challenges: string | null;
+  created_at: string;
+};
+
+/** Row returned by the `get_submitter_names` function. */
+export type SubmitterName = {
+  id: string;
+  full_name: string;
+  role: UserRole;
+};
+
 /** Row shape for the `workstream_summary` view. */
 export type WorkstreamSummary = {
   workstream: string;
@@ -140,6 +164,15 @@ export type SubmitUpdateInput = {
   actual?: string;
   latest_update: string;
   decisions_needed?: string;
+};
+
+/** One element of the `p_milestones` jsonb array for submit_initiative_update. */
+export type SubmitMilestoneEntryInput = {
+  milestone_id: string;
+  is_current: boolean;
+  status: RagStatus;
+  note: string | null;
+  challenges: string | null;
 };
 
 /**
@@ -215,6 +248,17 @@ export type Database = {
         Update: Partial<Omit<InitiativeUpdate, 'id' | 'created_at'>>;
         Relationships: [];
       };
+      initiative_update_milestones: {
+        Row: InitiativeUpdateMilestone;
+        // Inserted only via the submit_initiative_update RPC; title and
+        // previous_status are filled in by trigger.
+        Insert: Omit<
+          InitiativeUpdateMilestone,
+          'id' | 'created_at' | 'milestone_title' | 'previous_status'
+        > & { id?: string };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
     };
     Views: {
       workstream_summary: {
@@ -222,6 +266,24 @@ export type Database = {
         Relationships: [];
       };
     };
-    Functions: Record<string, never>;
+    Functions: {
+      submit_initiative_update: {
+        Args: {
+          p_initiative_id: string;
+          p_meeting_date: string;
+          p_status: RagStatus;
+          p_latest_update: string;
+          p_target?: string | null;
+          p_actual?: string | null;
+          p_decisions_needed?: string | null;
+          p_milestones?: SubmitMilestoneEntryInput[];
+        };
+        Returns: string; // new initiative_updates.id
+      };
+      get_submitter_names: {
+        Args: { p_ids: string[] };
+        Returns: SubmitterName[];
+      };
+    };
   };
 };
